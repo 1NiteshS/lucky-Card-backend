@@ -154,13 +154,53 @@ export const getAllAdmins = async (req, res) => {
 };
 
 
+// export const getAdminProfile = async (req, res) => {
+//   try {
+//     const admin = await Admin.findById(req.admin._id)
+//       .select('name email adminId wallet isVerified createdAt');
+    
+//     if (!admin) {
+//       return res.status(404).json({ error: 'Admin not found' });
+//     }
+
+//     res.status(200).json({
+//       success: true,
+//       data: {
+//         name: admin.name,
+//         email: admin.email,
+//         adminId: admin.adminId,
+//         wallet: admin.wallet,
+//         isVerified: admin.isVerified,
+//         joinedDate: admin.createdAt
+//       }
+//     });
+//   } catch (error) {
+//     console.error('Error fetching admin profile:', error);
+//     res.status(500).json({ error: 'Internal server error' });
+//   }
+// };
+
 export const getAdminProfile = async (req, res) => {
   try {
-    const admin = await Admin.findById(req.admin._id)
+    const { adminId } = req.params;  // Get adminId from URL params
+
+    console.log('Requested AdminId:', adminId);
+    console.log('Authenticated Admin:', req.admin);
+    
+    const admin = await Admin.findOne({ adminId })
       .select('name email adminId wallet isVerified createdAt');
     
     if (!admin) {
-      return res.status(404).json({ error: 'Admin not found' });
+      return res.status(404).json({ 
+        success: false,
+        error: 'Admin not found' 
+      });
+    }
+    if (admin.adminId !== req.admin.adminId) {
+      return res.status(403).json({
+        success: false,
+        error: 'You can only view your own profile'
+      });
     }
 
     res.status(200).json({
@@ -176,6 +216,9 @@ export const getAdminProfile = async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching admin profile:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
   }
 };

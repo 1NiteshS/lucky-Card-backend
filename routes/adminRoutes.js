@@ -19,6 +19,6 @@ router.post("/verify-otp", verifyOTP);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
 router.get('/all-admins', getAllAdmins);
-router.get("/profile", authAdmin, getAdminProfile)
+router.get("/profile/:adminId", authAdmin, getAdminProfile);
 
 export default router;
