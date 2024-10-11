@@ -62,36 +62,69 @@
 // export default mongoose.model('Game', gameSchema);
 
 
+// import mongoose from 'mongoose';
+
+// // Schema for a single ticket with card sets
+// const ticketSchema = new mongoose.Schema({
+//     ticketId: String,  // Add a ticketId for unique identification
+//     card1: Number,
+//     card2: Number,
+//     card3: Number
+// });
+
+// // Bet schema to define dynamic tickets under a bet
+// const betSchema = new mongoose.Schema({
+//     tickets: [ticketSchema]  // An array of tickets (dynamic)
+// });
+
+// // GameBet schema to define the bets placed by admins for a specific game
+// const gameBetSchema = new mongoose.Schema({
+//     AdminId: Number,
+//     Bet: betSchema  // A single bet object that holds dynamic tickets
+// });
+
+// // Game schema to define AdminId, GameId, and multiple bets for a game
+// const gameSchema = new mongoose.Schema({
+//     GameNo: Number,
+//     Bets: [gameBetSchema]  // An array of game bets
+// });
+
+// // Export the Game model
+// export default mongoose.model('Game', gameSchema);
+
+
+
+
 import mongoose from 'mongoose';
 
-// Schema for a single ticket with card sets
+// Schema for a single card within a ticket
+const cardSchema = new mongoose.Schema({
+    cardId: Number,  // Unique ID for each card
+    betAmount: Number  // Amount of money placed on the card
+});
+
+// Schema for a ticket with multiple cards
 const ticketSchema = new mongoose.Schema({
-    ticketId: String,  // Add a ticketId for unique identification
-    card1: Number,
-    card2: Number,
-    card3: Number
+    ticketId: String,  // Unique ID for the ticket
+    cards: [cardSchema]  // Array of cards
 });
 
-// Bet schema to define dynamic tickets under a bet
+// Schema for an admin's bet with multiple tickets
 const betSchema = new mongoose.Schema({
-    tickets: [ticketSchema]  // An array of tickets (dynamic)
+    tickets: [ticketSchema]  // Array of tickets
 });
 
-// GameBet schema to define the bets placed by admins for a specific game
-const gameBetSchema = new mongoose.Schema({
-    AdminId: Number,
-    Bet: betSchema  // A single bet object that holds dynamic tickets
-});
-
-// Game schema to define AdminId, GameId, and multiple bets for a game
+// Schema for game with multiple bets
 const gameSchema = new mongoose.Schema({
-    GameNo: Number,
-    Bets: [gameBetSchema]  // An array of game bets
+    GameNo: Number,  // Unique game number
+    Bets: [{
+        AdminId: Number,  // Admin ID
+        Bet: betSchema  // Admin's bet
+    }]
 });
 
 // Export the Game model
 export default mongoose.model('Game', gameSchema);
-
 
 
 

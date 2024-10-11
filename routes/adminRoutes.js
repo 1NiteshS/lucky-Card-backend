@@ -9,7 +9,7 @@ import {
   getAllAdmins,
   getAdminProfile,
 } from '../controllers/adminController.js';
-import {authSuperAdmin} from '../middleware/auth.js';
+import {authAdmin, authSuperAdmin} from '../middleware/auth.js';
 
 const router = express.Router();
 
