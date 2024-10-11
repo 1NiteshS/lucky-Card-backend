@@ -1,5 +1,4 @@
 import { v4 as uuidv4 } from 'uuid';
-import Card from '../models/cardModel.js';
 import SelectedCard from '../models/selectedCardModel.js';
 import Timer from '../models/timerModel.js';
 import Game from '../models/gameModel.js';
@@ -322,17 +321,112 @@ const saveSelectedCard = async (selectedAmount, gameId) => {
 
 
 
+// Controller function to place a bet
+export const placeBet = async (req, res) => {
+    try {
+        // Find the game timer
+        let timer = await Timer.findOne({ timerId: 'game-timer' });
 
+        // Check if the timer is running
+        if (!timer || !timer.isRunning) {
+            return res.status(400).json({ message: 'No active game. Betting is closed.' });
+        }
 
+        // Find the current game
+        const currentGame = await Game.findOne().sort({ GameNo: -1 });
 
+        if (!currentGame) {
+            return res.status(400).json({ message: 'No game in progress.' });
+        }
 
+        // Extract bet details from request body
+        const { AdminId, ticket } = req.body;
 
+        if (!ticket || !AdminId) {
+            return res.status(400).json({ message: 'Invalid bet data.' });
+        }
 
+        // Push the bet to the current game
+        currentGame.Bets.push({
+            AdminId,
+            Bet: ticket
+        });
+
+        await currentGame.save();
+
+        return res.json({
+            message: 'Bet placed successfully',
+            gameNo: currentGame.GameNo,
+            bet: {
+                AdminId,
+                ticket
+            }
+        });
+    } catch (err) {
+        return res.status(500).json({ message: 'Error placing the bet', error: err.message });
+    }
+};
+
+// export const placeBet = async (req, res) => {
+//     try {
+//         // Find the game timer
+//         let timer = await Timer.findOne({ timerId: 'game-timer' });
+
+//         // Check if the timer is running
+//         if (!timer || !timer.isRunning) {
+//             return res.status(400).json({ message: 'No active game. Betting is closed.' });
+//         }
+
+//         // Find the current game
+//         const currentGame = await Game.findOne().sort({ GameNo: -1 });
+
+//         if (!currentGame) {
+//             return res.status(400).json({ message: 'No game in progress.' });
+//         }
+
+//         // Extract bet details from request body
+//         const { AdminId, cards } = req.body;
+
+//         if (!cards || !AdminId || cards.length === 0) {
+//             return res.status(400).json({ message: 'Invalid bet data. Cards are required.' });
+//         }
+
+//         // Generate a unique ticket ID
+//         const ticketId = uuidv4();
+
+//         // Create a new ticket with its associated bets (cards)
+//         const newTicket = {
+//             ticketId,
+//             AdminId,
+//             cards // The cards placed in this ticket
+//         };
+
+//         // Push the new ticket into the current game's bets
+//         currentGame.Tickets.push(newTicket);
+
+//         await currentGame.save();
+
+//         // Return the response with the new structure
+//         return res.json({
+//             message: 'Bet placed successfully',
+//             gameNo: currentGame.GameNo,
+//             bets: {
+//                 AdminId,
+//                 ticketId: {
+//                     uniqueTicketId: ticketId,
+//                     cards // Return the cards placed in the ticket
+//                 }
+//             }
+//         });
+//     } catch (err) {
+//         return res.status(500).json({ message: 'Error placing the bet', error: err.message });
+//     }
+// };
 
 
 
 // Function to create a new GameId and store it in the database
-const createNewGame = async () => {
+export const createNewGame = async () => {
     const lastGame = await Game.findOne().sort({ GameNo: -1 }); // Get the last game
     const newGameNumber = lastGame ? lastGame.GameNo + 1 : 1; // Increment GameId or set to 1 if no game exists
 

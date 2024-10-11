@@ -70,3 +70,52 @@ export const addToWallet = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+
+export const getGameHistory = async (req, res) => {
+  try {
+      // Get pagination parameters from query string with defaults
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const skip = (page - 1) * limit;
+
+      // Get total count of games for pagination info
+      const totalGames = await Game.countDocuments();
+
+      // Fetch games with pagination, sorting by GameNo in descending order
+      const games = await Game.find()
+          .sort({ GameNo: -1 })
+          .skip(skip)
+          .limit(limit)
+          .select('GameNo Bets createdAt') // Select specific fields you want to return
+          .lean(); // Convert to plain JavaScript objects for better performance
+
+      // Calculate pagination metadata
+      const totalPages = Math.ceil(totalGames / limit);
+      const hasNextPage = page < totalPages;
+      const hasPrevPage = page > 1;
+
+      // Return response with games and pagination info
+      res.status(200).json({
+          success: true,
+          data: {
+              games,
+              pagination: {
+                  currentPage: page,
+                  totalPages,
+                  totalGames,
+                  limit,
+                  hasNextPage,
+                  hasPrevPage
+              }
+          }
+      });
+
+  } catch (error) {
+      console.error('Error fetching game history:', error);
+      res.status(500).json({
+          success: false,
+          error: "Internal server error"
+      });
+  }
+};
