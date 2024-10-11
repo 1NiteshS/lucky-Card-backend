@@ -6,6 +6,7 @@ import {
   verifyOTP,
   forgotPassword,
   resetPassword,
+  getAllAdmins,
 } from '../controllers/adminController.js';
 import {authSuperAdmin} from '../middleware/auth.js';
 
@@ -16,5 +17,6 @@ router.post("/login", login);
 router.post("/verify-otp", verifyOTP);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
+router.get('/all-admins', getAllAdmins);
 
 export default router;

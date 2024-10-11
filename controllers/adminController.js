@@ -133,3 +133,22 @@ export const resetPassword = async (req, res) => {
     res.status(400).send(error);
   }
 };
+
+export const getAllAdmins = async (req, res) => {
+  try {
+    const admins = await Admin.find({}, 'name email createdAt password wallet');
+    
+    const adminData = admins.map(admin => ({
+      name: admin.name,
+      email: admin.email,
+      creationDate: admin.createdAt,
+      password: admin.password.replace(/./g, '*').slice(0, 10) + '...',
+      walletBalance: admin.wallet
+    }));
+
+    res.status(200).json(adminData);
+  } catch (error) {
+    console.error('Error fetching admins:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};

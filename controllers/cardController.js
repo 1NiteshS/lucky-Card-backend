@@ -171,6 +171,9 @@ export const getTimer = async (req, res) => {
     }
 };
 
+
+
+
 export const calculateAmounts = async (req, res) => {
     try {
         console.log("Starting the calculation process...");
@@ -191,23 +194,28 @@ export const calculateAmounts = async (req, res) => {
         await timer.save();
         console.log(`Timer stopped at ${timer.remainingTime}`);
 
-        // Fetch games from the database with lean() to avoid Mongoose document wrapper
-        const games = await Game.find().lean();
-        console.log(`Fetched games: ${JSON.stringify(games)}`);
+        // Fetch the latest game from the database with lean() to avoid Mongoose document wrapper
+        const latestGame = await Game.findOne().sort({ createdAt: -1 }).lean(); // Adjust sort based on your schema
+        if (!latestGame) {
+            return res.status(404).json({ message: 'No games found' });
+        }
+        console.log(`Fetched latest game: ${JSON.stringify(latestGame)}`);
 
-        for (const game of games) {
-            console.log(`Processing game: ${game.GameId}`);
+        // Initialize a variable to hold the winning card
+        let winningCard = null;
 
-            // Iterate over each bet within the game
-            for (const bet of game.Bets) {
-                console.log(`Processing bet for AdminId: ${bet.AdminId}`);
-                const validAmounts = processGameBets(bet.Bet);
-                
-                const selectedAmount = selectRandomAmount(validAmounts);
+        // Changed from GameId to GameNo
+        console.log(`Processing game: ${latestGame.GameNo}`); 
 
-                if (selectedAmount) {
-                    await saveSelectedCard(selectedAmount, game.GameId);
-                }
+        // Iterate over each bet within the latest game
+        for (const bet of latestGame.Bets) {
+            console.log(`Processing bet for AdminId: ${bet.AdminId}`);
+            const validAmounts = processGameBets(bet.Bet);
+            
+            const selectedAmount = selectRandomAmount(validAmounts);
+            if (selectedAmount) {
+                await saveSelectedCard(selectedAmount, latestGame.GameNo); // Also changed here
+                winningCard = selectedAmount; // Store the winning card
             }
         }
 
@@ -224,6 +232,7 @@ export const calculateAmounts = async (req, res) => {
         res.status(200).json({
             message: 'Amounts calculated successfully',
             previousSelectedCards,  // Return all previously selected cards
+            winningCard,            // Return the winning card
         });
 
     } catch (err) {
@@ -232,32 +241,44 @@ export const calculateAmounts = async (req, res) => {
     }
 };
 
+
 // Function to process the bets of each game
-const processGameBets = (bet) => {
+// Function to process the bets of each game
+const processGameBets = (bets) => {
     let totalAmount = 0;
     const amounts = [];
 
-    // Process tickets in the bet
-    for (const ticketKey in bet) {
-        const ticket = bet[ticketKey];
-        console.log(`Processing ${ticketKey}`);
+    // Process each bet
+    for (const bet of bets) {
+        console.log(`Processing bet with ID: ${bet._id}`);
 
-        // Access cards in the ticket
-        for (const cardKey in ticket) {
-            if (Array.isArray(ticket[cardKey])) {
-                // Ensure the card amount is a number and process it
-                const cardAmount = Number(ticket[cardKey][0]);  // Convert to number
-                if (!isNaN(cardAmount)) {
-                    totalAmount += cardAmount;
-                    console.log(`Card: ${cardKey}, Amount: ${cardAmount}`);
+        // Process tickets in the bet
+        for (const ticket of bet.tickets) {
+            console.log(`Processing ticket with ID: ${ticket._id}`);
 
-                    // Apply multipliers
-                    amounts.push({
-                        cardKey,
-                        originalAmount: cardAmount,
-                        '2X': cardAmount * 20,
-                        '3X': cardAmount * 30,
-                        '5X': cardAmount * 50,
+            // Access cards in the ticket
+            for (const ticketKey in ticket) {
+                const cards = ticket[ticketKey];
+                if (Array.isArray(cards)) {
+                    cards.forEach(card => {
+                        // Ensure each card amount is a number and process it
+                        const cardAmounts = Object.values(card).flat(); // Flatten card amounts
+                        cardAmounts.forEach(cardAmount => {
+                            const amount = Number(cardAmount[0]);  // Convert to number
+                            if (!isNaN(amount)) {
+                                totalAmount += amount;
+                                console.log(`Card: ${ticketKey}, Amount: ${amount}`);
+
+                                // Apply multipliers
+                                amounts.push({
+                                    cardKey: ticketKey,
+                                    originalAmount: amount,
+                                    '2X': amount * 20,
+                                    '3X': amount * 30,
+                                    '5X': amount * 50,
+                                });
+                            }
+                        });
                     });
                 }
             }
@@ -265,7 +286,7 @@ const processGameBets = (bet) => {
     }
 
     console.log(`Total amount for bet: ${totalAmount}`);
-
+    
     const percAmount = totalAmount * 0.85;
     console.log(`85% of totalAmount: ${percAmount}`);
 
@@ -322,9 +343,100 @@ const saveSelectedCard = async (selectedAmount, gameId) => {
 
 
 // Controller function to place a bet
+// export const placeBet = async (req, res) => {
+//     try {
+//         // Find the game timer
+//         let timer = await Timer.findOne({ timerId: 'game-timer' });
+
+//         // Check if the timer is running
+//         if (!timer || !timer.isRunning) {
+//             return res.status(400).json({ message: 'No active game. Betting is closed.' });
+//         }
+
+//         // Find the current game
+//         const currentGame = await Game.findOne().sort({ GameNo: -1 });
+
+//         if (!currentGame) {
+//             return res.status(400).json({ message: 'No game in progress.' });
+//         }
+
+//         // Extract bet details from request body
+//         const { AdminId, ticket } = req.body;
+
+//         if (!ticket || !AdminId) {
+//             return res.status(400).json({ message: 'Invalid bet data.' });
+//         }
+
+//         // Push the bet to the current game
+//         currentGame.Bets.push({
+//             AdminId,
+//             Bet: ticket
+//         });
+
+//         await currentGame.save();
+
+//         return res.json({
+//             message: 'Bet placed successfully',
+//             gameNo: currentGame.GameNo,
+//             bet: {
+//                 AdminId,
+//                 ticket
+//             }
+//         });
+//     } catch (err) {
+//         return res.status(500).json({ message: 'Error placing the bet', error: err.message });
+//     }
+// };
+
+// export const placeBet = async (req, res) => {
+//     try {
+//         let timer = await Timer.findOne({ timerId: 'game-timer' });
+
+//         if (!timer || !timer.isRunning) {
+//             return res.status(400).json({ message: 'No active game. Betting is closed.' });
+//         }
+
+//         const currentGame = await Game.findOne().sort({ GameNo: -1 });
+
+//         if (!currentGame) {
+//             return res.status(400).json({ message: 'No game in progress.' });
+//         }
+
+//         const { AdminId, ticket } = req.body;
+
+//         if (!ticket || !AdminId) {
+//             return res.status(400).json({ message: 'Invalid bet data.' });
+//         }
+
+//         // Log the incoming bet to debug
+//         console.log('Incoming Bet:', { AdminId, ticket });
+
+//         // Create a new bet entry
+//         const newBet = {
+//             AdminId,
+//             Bet: ticket // This should directly map to the betSchema structure
+//         };
+
+//         // Push the new bet to the current game
+//         currentGame.Bets.push(newBet);
+
+//         // Save the updated game document
+//         await currentGame.save();
+
+//         return res.json({
+//             message: 'Bet placed successfully',
+//             gameNo: currentGame.GameNo,
+//             bet: newBet // Return the newly created bet for confirmation
+//         });
+//     } catch (err) {
+//         console.error('Error placing bet:', err);
+//         return res.status(500).json({ message: 'Error placing the bet', error: err.message });
+//     }
+// };
+
 export const placeBet = async (req, res) => {
     try {
-        // Find the game timer
+        // Fetch the game timer
         let timer = await Timer.findOne({ timerId: 'game-timer' });
 
         // Check if the timer is running
@@ -339,33 +451,54 @@ export const placeBet = async (req, res) => {
             return res.status(400).json({ message: 'No game in progress.' });
         }
 
-        // Extract bet details from request body
+        // Extract AdminId and ticket data from the request body
         const { AdminId, ticket } = req.body;
 
+        // Validate input data
         if (!ticket || !AdminId) {
             return res.status(400).json({ message: 'Invalid bet data.' });
         }
 
-        // Push the bet to the current game
-        currentGame.Bets.push({
-            AdminId,
-            Bet: ticket
-        });
+        // Log the incoming bet for debugging
+        console.log('Incoming Bet:', { AdminId, ticket });
 
+        // Create a new ticket entry with dynamic ticketId
+        const ticketWithId = {
+            ...ticket,
+            ticketId: uuidv4()  // Assign a unique ID to each ticket
+        };
+
+        // Find or create an Admin bet entry
+        let adminBet = currentGame.Bets.find(bet => bet.AdminId === AdminId);
+        
+        if (adminBet) {
+            // If the Admin already has a bet, add the new ticket
+            adminBet.Bet.tickets.push(ticketWithId);
+        } else {
+            // If the Admin does not have a bet, create a new bet with this ticket
+            const newBet = {
+                AdminId,
+                Bet: {
+                    tickets: [ticketWithId]  // Add the new ticket in an array
+                }
+            };
+            currentGame.Bets.push(newBet);
+        }
+
+        // Save the updated game document
         await currentGame.save();
 
         return res.json({
             message: 'Bet placed successfully',
             gameNo: currentGame.GameNo,
-            bet: {
-                AdminId,
-                ticket
-            }
+            bet: ticketWithId  // Return the newly created ticket for confirmation
         });
     } catch (err) {
+        console.error('Error placing bet:', err);
         return res.status(500).json({ message: 'Error placing the bet', error: err.message });
     }
 };
+
 
 // export const placeBet = async (req, res) => {
 //     try {
