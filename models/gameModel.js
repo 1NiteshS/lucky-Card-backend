@@ -47,7 +47,7 @@ const gameBetSchema = new mongoose.Schema({
 
 // Game schema to define AdminId, GameId, and multiple bets for a game
 const gameSchema = new mongoose.Schema({
-    GameId: Number,
+    GameNo: Number,
     Bets: [gameBetSchema]  // An array of game bets
 });
 

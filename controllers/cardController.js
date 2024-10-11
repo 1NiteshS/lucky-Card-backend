@@ -73,7 +73,7 @@ export const initializeCards = async (req, res) => {
                         }
                     }
                 ]
-            }
+            },
         ];
 
         // Insert game data into the database
@@ -86,49 +86,73 @@ export const initializeCards = async (req, res) => {
 
 let timerInterval;  // Store the interval globally
 // Function to start the timer
-export const startTimer = async (io) => {
-    let timer = await Timer.findOne({ timerId: 'game-timer' });
+// export const startTimer = async (io) => {
+//     let timer = await Timer.findOne({ timerId: 'game-timer' });
 
-    if (!timer) {
-        timer = new Timer({ timerId: 'game-timer', remainingTime: 30, isRunning: true });
-        await timer.save();
-    }
+//     if (!timer) {
+//         timer = new Timer({ timerId: 'game-timer', remainingTime: 30, isRunning: true });
+//         await timer.save();
+//     }
 
-    timer.isRunning = true;
-    await timer.save();
-    io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
+//     timer.isRunning = true;
+//     await timer.save();
+//     io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
 
-    const timerInterval = setInterval(async () => {
-        if (timer.remainingTime > 0) {
-            timer.remainingTime -= 1;
-            await timer.save();
+//     const timerInterval = setInterval(async () => {
+//         if (timer.remainingTime > 0) {
+//             timer.remainingTime -= 1;
+//             await timer.save();
 
-            // Emit real-time update to all clients
-            io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
-        } else {
-            clearInterval(timerInterval);
-            timer.isRunning = false;
-            await timer.save();
+//             // Emit real-time update to all clients
+//             io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
+//         } else {
+//             clearInterval(timerInterval);
+//             timer.isRunning = false;
+//             await timer.save();
 
-            // Emit timer stop event
-            io.emit('timerUpdate', { remainingTime: 0, isRunning: false });
-        }
-    }, 1000);
-};
+//             // Emit timer stop event
+//             io.emit('timerUpdate', { remainingTime: 0, isRunning: false });
+//         }
+//     }, 1000);
+// };
 
 // Function to reset the timer
-export const resetTimer = async (io) => {
-    let timer = await Timer.findOne({ timerId: 'game-timer' });
+// export const resetTimer = async (io) => {
+//     let timer = await Timer.findOne({ timerId: 'game-timer' });
 
-    if (timer) {
-        timer.remainingTime = 30;
-        await timer.save();
+//     if (timer) {
+//         timer.remainingTime = 30;
+//         await timer.save();
 
-        // Restart the timer after resetting
-        startTimer(io);
-        io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: true });
-    }
-};
+//         // Restart the timer after resetting
+//         startTimer(io);
+//         io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: true });
+//     }
+// };
+
+
+// // Function to change the timer duration
+// export const changeTimerDuration = async (req, res) => {
+//     const { newDuration } = req.body;
+
+//     if (typeof newDuration !== 'number' || newDuration <= 0) {
+//         return res.status(400).json({ message: 'Invalid duration' });
+//     }
+
+//     let timer = await Timer.findOne({ timerId: 'game-timer' });
+
+//     if (timer) {
+//         timer.remainingTime = newDuration;  // Change to the new duration
+//         await timer.save();
+
+//         // Emit the updated timer state without stopping the current timer
+//         io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
+
+//         res.status(200).json({ message: 'Timer duration updated', newDuration });
+//     } else {
+//         res.status(404).json({ message: 'Timer not found' });
+//     }
+// };
 
 // Function to get the current timer state
 export const getTimer = async (req, res) => {
@@ -291,4 +315,85 @@ const saveSelectedCard = async (selectedAmount, gameId) => {
     const selectedCard = new SelectedCard(selectedCardData);
     await selectedCard.save();
     console.log(`Selected card saved for game ${gameId}: ${JSON.stringify(selectedCardData)}`);
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Function to create a new GameId and store it in the database
+const createNewGame = async () => {
+    const lastGame = await Game.findOne().sort({ GameNo: -1 }); // Get the last game
+    const newGameNumber = lastGame ? lastGame.GameNo + 1 : 1; // Increment GameId or set to 1 if no game exists
+
+    const newGame = new Game({
+        GameNo: newGameNumber,
+        Bets: []  // Initialize an empty array for the bets
+    });
+    await newGame.save();
+
+    return newGameNumber;
+};
+
+// Function to start the timer
+export const startTimer = async (io) => {
+    let timer = await Timer.findOne({ timerId: 'game-timer' });
+
+    if (!timer) {
+        timer = new Timer({ timerId: 'game-timer', remainingTime: 30, isRunning: true });
+        await timer.save();
+    }
+
+    timer.isRunning = true;
+    await timer.save();
+    io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
+
+    const timerInterval = setInterval(async () => {
+        if (timer.remainingTime > 0) {
+            timer.remainingTime -= 1;
+            await timer.save();
+
+            // Emit real-time update to all clients
+            io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
+        } else {
+            // Timer hit zero, stop the timer
+            clearInterval(timerInterval);
+            timer.isRunning = false;
+            await timer.save();
+
+            // Create a new GameId dynamically when the timer hits zero
+            const newGameNumber = await createNewGame();
+            console.log(`New Game Created with GameNumber: ${newGameNumber}`);
+
+            // Emit timer stop event
+            io.emit('timerUpdate', { remainingTime: 0, isRunning: false });
+
+            // Reset the timer and start it again
+            resetTimer(io);
+        }
+    }, 1000);
+};
+
+// Function to reset the timer
+export const resetTimer = async (io) => {
+    let timer = await Timer.findOne({ timerId: 'game-timer' });
+
+    if (timer) {
+        timer.remainingTime = 30;  // Reset timer to 30 seconds
+        await timer.save();
+
+        // Start the timer again after resetting
+        startTimer(io);
+        io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: true });
+    }
 };
