@@ -7,6 +7,7 @@ import {
   forgotPassword,
   resetPassword,
   getAllAdmins,
+  getAdminProfile,
 } from '../controllers/adminController.js';
 import {authSuperAdmin} from '../middleware/auth.js';
 
@@ -18,5 +19,6 @@ router.post("/verify-otp", verifyOTP);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
 router.get('/all-admins', getAllAdmins);
+router.get("/profile", authAdmin, getAdminProfile)
 
 export default router;
