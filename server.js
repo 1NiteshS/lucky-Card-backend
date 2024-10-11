@@ -6,7 +6,6 @@ import http from 'http';
 import { Server } from 'socket.io';
 import { startTimer, resetTimer } from './controllers/cardController.js';
 import Timer from './models/timerModel.js';
-import timerRoutes from './routes/cardRoutes.js';
 
 import cors from 'cors';
 
@@ -23,6 +22,12 @@ const io = new Server(server);
 
 // Connect to the database
 connectDB();
+
+app.use(cors({
+    origin: '*',  // Allows all origins; for production, specify allowed origins
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true
+}));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -67,13 +72,6 @@ io.on('connection', (socket) => {
         console.log('A user disconnected');
     });
 });
-// server.js
-
-connectDB();
-app.use(cors());
-
-app.use(express.json());
-
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
