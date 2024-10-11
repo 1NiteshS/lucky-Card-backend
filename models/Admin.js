@@ -10,6 +10,7 @@ const AdminSchema = new mongoose.Schema(
     isVerified: { type: Boolean, default: false },
     otp: { type: String },
     otpExpiry: { type: Date },
+    wallet: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
