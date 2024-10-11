@@ -152,3 +152,30 @@ export const getAllAdmins = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+
+export const getAdminProfile = async (req, res) => {
+  try {
+    const admin = await Admin.findById(req.admin._id)
+      .select('name email adminId wallet isVerified createdAt');
+    
+    if (!admin) {
+      return res.status(404).json({ error: 'Admin not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        name: admin.name,
+        email: admin.email,
+        adminId: admin.adminId,
+        wallet: admin.wallet,
+        isVerified: admin.isVerified,
+        joinedDate: admin.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching admin profile:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
