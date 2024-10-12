@@ -3,177 +3,7 @@ import SelectedCard from '../models/selectedCardModel.js';
 import Timer from '../models/timerModel.js';
 import Game from '../models/gameModel.js';
 
-// Initialize the cards with IDs and amounts
-export const initializeCards = async (req, res) => {
-    try {
-        // Define the game data
-        const gamesData = [
-            {
-                GameId: 1,
-                Bets: [
-                    {
-                        AdminId: 1,
-                        Bet: {
-                            Ticket1: {
-                                card1: [2],
-                                card2: [5],
-                                card3: [3]
-                            },
-                            Ticket2: {
-                                card1: [5],
-                                card2: [4],
-                                card3: [2]
-                            },
-                            Ticket3: {
-                                card1: [10],
-                                card2: [5],
-                                card3: [2]
-                            }
-                        }
-                    },
-                    {
-                        AdminId: 2,
-                        Bet: {
-                            Ticket1: {
-                                card1: [5],
-                                card2: [4],
-                                card3: [10]
-                            },
-                            Ticket2: {
-                                card1: [5],
-                                card2: [6],
-                                card3: [8]
-                            },
-                            Ticket3: {
-                                card1: [10],
-                                card2: [5],
-                                card3: [2]
-                            }
-                        }
-                    },
-                    {
-                        AdminId: 3,
-                        Bet: {
-                            Ticket1: {
-                                card1: [5],
-                                card2: [4],
-                                card3: [10]
-                            },
-                            Ticket2: {
-                                card1: [5],
-                                card2: [6],
-                                card3: [8]
-                            },
-                            Ticket3: {
-                                card1: [10],
-                                card2: [5],
-                                card3: [2]
-                            }
-                        }
-                    }
-                ]
-            },
-        ];
-
-        // Insert game data into the database
-        await Game.insertMany(gamesData);
-        res.status(201).json({ message: 'Games initialized', games: gamesData });
-    } catch (err) {
-        res.status(500).json({ message: 'Error initializing games', error: err.message });
-    }
-};
-
-let timerInterval;  // Store the interval globally
-// Function to start the timer
-// export const startTimer = async (io) => {
-//     let timer = await Timer.findOne({ timerId: 'game-timer' });
-
-//     if (!timer) {
-//         timer = new Timer({ timerId: 'game-timer', remainingTime: 30, isRunning: true });
-//         await timer.save();
-//     }
-
-//     timer.isRunning = true;
-//     await timer.save();
-//     io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
-
-//     const timerInterval = setInterval(async () => {
-//         if (timer.remainingTime > 0) {
-//             timer.remainingTime -= 1;
-//             await timer.save();
-
-//             // Emit real-time update to all clients
-//             io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
-//         } else {
-//             clearInterval(timerInterval);
-//             timer.isRunning = false;
-//             await timer.save();
-
-//             // Emit timer stop event
-//             io.emit('timerUpdate', { remainingTime: 0, isRunning: false });
-//         }
-//     }, 1000);
-// };
-
-// Function to reset the timer
-// export const resetTimer = async (io) => {
-//     let timer = await Timer.findOne({ timerId: 'game-timer' });
-
-//     if (timer) {
-//         timer.remainingTime = 30;
-//         await timer.save();
-
-//         // Restart the timer after resetting
-//         startTimer(io);
-//         io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: true });
-//     }
-// };
-
-
-// // Function to change the timer duration
-// export const changeTimerDuration = async (req, res) => {
-//     const { newDuration } = req.body;
-
-//     if (typeof newDuration !== 'number' || newDuration <= 0) {
-//         return res.status(400).json({ message: 'Invalid duration' });
-//     }
-
-//     let timer = await Timer.findOne({ timerId: 'game-timer' });
-
-//     if (timer) {
-//         timer.remainingTime = newDuration;  // Change to the new duration
-//         await timer.save();
-
-//         // Emit the updated timer state without stopping the current timer
-//         io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
-
-//         res.status(200).json({ message: 'Timer duration updated', newDuration });
-//     } else {
-//         res.status(404).json({ message: 'Timer not found' });
-//     }
-// };
-
 // Function to get the current timer state
-export const getTimer = async (req, res) => {
-    try {
-        const timer = await Timer.findOne({ timerId: 'game-timer' });
-
-        if (!timer) {
-            return res.status(404).json({ message: 'No active timer found' });
-        }
-
-        res.status(200).json({
-            remainingTime: timer.remainingTime,
-            isRunning: timer.isRunning
-        });
-    } catch (err) {
-        res.status(500).json({ message: 'Error fetching timer', error: err.message });
-    }
-};
-
-
-
-
 export const calculateAmounts = async (req, res) => {
     try {
         console.log("Starting the calculation process...");
@@ -241,7 +71,6 @@ export const calculateAmounts = async (req, res) => {
     }
 };
 
-
 // Function to process the bets of each game
 const processGameBets = (bets) => {
     let totalAmount = 0;
@@ -300,7 +129,6 @@ const processGameBets = (bets) => {
     console.log(`Valid amounts: ${JSON.stringify(validAmounts)}`);
     return validAmounts;
 };
-
 
 // Helper function to add valid amounts
 const addValidAmount = (validAmounts, item, multiplier) => {
@@ -397,6 +225,23 @@ export const startTimer = async (io) => {
             resetTimer(io);
         }
     }, 1000);
+};
+
+export const getTimer = async (req, res) => {
+    try {
+        const timer = await Timer.findOne({ timerId: 'game-timer' });
+
+        if (!timer) {
+            return res.status(404).json({ message: 'No active timer found' });
+        }
+
+        res.status(200).json({
+            remainingTime: timer.remainingTime,
+            isRunning: timer.isRunning
+        });
+    } catch (err) {
+        res.status(500).json({ message: 'Error fetching timer', error: err.message });
+    }
 };
 
 // Function to reset the timer
