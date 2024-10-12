@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import SelectedCard from '../models/selectedCardModel.js';
 import Timer from '../models/timerModel.js';
 import Game from '../models/gameModel.js';
+import Admin from '../models/Admin.js';
 
 // Function to get the current timer state
 export const calculateAmounts = async (req, res) => {
@@ -166,34 +167,24 @@ const saveSelectedCard = async (selectedAmount, gameId) => {
 
 
 
-
-
-
-
-
-
-
 // Function to create a new GameId and store it in the database
 export const createNewGame = async () => {
-    const lastGame = await Game.findOne().sort({ GameNo: -1 }); // Get the last game
-    const newGameNumber = lastGame ? lastGame.GameNo + 1 : 1; // Increment GameId or set to 1 if no game exists
+    const lastGame = await Game.findOne().sort({ createdAt: -1 }); // Get the last game
 
     const newGame = new Game({
-        GameNo: newGameNumber,
         Bets: []  // Initialize an empty array for the bets
     });
     await newGame.save();
 
-    return newGameNumber;
+    return lastGame;
 };
-
 
 // Function to start the timer
 export const startTimer = async (io) => {
     let timer = await Timer.findOne({ timerId: 'game-timer' });
 
     if (!timer) {
-        timer = new Timer({ timerId: 'game-timer', remainingTime: 30, isRunning: true });
+        timer = new Timer({ timerId: 'game-timer', remainingTime: 20, isRunning: true });
         await timer.save();
     }
 
@@ -249,7 +240,7 @@ export const resetTimer = async (io) => {
     let timer = await Timer.findOne({ timerId: 'game-timer' });
 
     if (timer) {
-        timer.remainingTime = 30;  // Reset timer to 30 seconds
+        timer.remainingTime = 20;  // Reset timer to 30 seconds
         await timer.save();
 
         // Start the timer again after resetting
@@ -258,93 +249,41 @@ export const resetTimer = async (io) => {
     }
 };
 
-
-
-export const placeBet = async (req, res) => {
+export const placeBet = async (adminId, ticketsID, cardNo, Amount, GameId) => {  
     try {
-        // Check the game timer
-        let timer = await Timer.findOne({ timerId: 'game-timer' });
-
-        if (!timer || !timer.isRunning) {
-            return res.status(400).json({ message: 'No active game. Betting is closed.' });
-        }
-
-        // Extract bet details from request body
-        const { gameId, adminId, ticketsID, cardNo, Amount } = req.body;
-
-        if (!gameId || !adminId || !ticketsID || !cardNo || Amount == null) {
-            return res.status(400).json({ message: 'Invalid bet data. All fields are required.' });
-        }
-
-        // Find the current game by gameId
-        const currentGame = await Game.findOne({ gameID: gameId });
-
-        if (!currentGame) {
-            return res.status(400).json({ message: 'Game not found.' });
-        }
-
-        // Find the admin within the current game
-        const admin = currentGame.gameDetails.find(detail => detail.adminID === adminId);
-
+        // Fetch the admin details using admin ID
+        const admin = await Admin.findById(adminId);
         if (!admin) {
-            return res.status(400).json({ message: 'Admin not found for this game.' });
+            throw new Error('Admin not found!');
         }
 
-        // Ensure the cards array exists
-        if (!Array.isArray(admin.card)) {
-            admin.card = [];
+        // Check if there is an active game with the given GameId
+        const activeGame = await Game.findOne({ GameId: GameId });
+        if (!activeGame) {
+            throw new Error('Game not found!');
         }
 
-        // Check if the card already exists in the admin's bets
-        const existingCard = admin.card.find(card => card.cardNo === cardNo);
-        if (existingCard) {
-            // Update the amount if the card already exists
-            existingCard.Amount += Amount;
-        } else {
-            // Create a new card entry
-            const newCard = {
-                cardNo,
-                Amount
-            };
-            admin.card.push(newCard);
-        }
+        // Create a new bet entry (gameDetails) to be pushed into the Bets array
+        const newBet = {
+            adminID: admin.adminId,  // Use adminId from Admin model
+            ticketsID: ticketsID,
+            card: [
+                {
+                    cardNo: cardNo,
+                    Amount: Amount
+                }
+            ]
+        };
 
-        // Ensure tickets array exists
-        if (!Array.isArray(admin.tickets)) {
-            admin.tickets = [];
-        }
+        // Add the new bet to the Bets array of the game
+        activeGame.Bets.push(newBet);
 
-        // Create a new ticket if it does not exist
-        let ticket = admin.tickets.find(ticket => ticket.ticketsID === ticketsID);
-        if (!ticket) {
-            ticket = {
-                ticketsID,
-                card: [] // Initialize cards in the ticket
-            };
-            admin.tickets.push(ticket);
-        }
+        // Save the updated game
+        await activeGame.save();
 
-        // Push the new card into the ticket's card array
-        ticket.card.push({
-            cardNo,
-            Amount
-        });
-
-        // Save the updated game with the new ticket and card
-        await currentGame.save();
-
-        return res.json({
-            message: 'Bet placed successfully',
-            gameId: currentGame.gameID,
-            bets: {
-                adminId,
-                ticketsID,
-                cardNo,
-                Amount
-            }
-        });
-    } catch (err) {
-        console.error('Error placing bet:', err);
-        return res.status(500).json({ message: 'Error placing the bet', error: err.message });
+        return { message: 'Game data successfully uploaded!', game: activeGame };
+    } catch (error) {
+        console.error('Error uploading game data:', error);
+        return { message: 'Failed to upload game data.', error };
     }
 };

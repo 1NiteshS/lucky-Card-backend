@@ -1,37 +1,23 @@
 import mongoose from 'mongoose';
+import crypto from 'crypto';
 
-// Define the combined game schema
+// Generate a random game ID
+const generateGameId = () => {
+    return crypto.createHash('sha256').update(Math.random().toString()).digest('hex').substring(0, 64);
+};
+
+// Define the Game schema with Bets array
 const gameSchema = new mongoose.Schema({
-    gameID: {
+    GameId: {
         type: String,
         required: true,
-        unique: true
+        unique: true,
+        default: generateGameId // Automatically generate a unique GameId
     },
-    gameDetails: [
-        {
-            adminID: {  // Corrected from "adiminID" to "adminID"
-                type: String,
-                required: true
-            },
-            ticketsID: {
-                type: String,
-                required: true
-            },
-            card: [
-                {
-                    cardNo: {
-                        type: String,
-                        required: true
-                    },
-                    Amount: {
-                        type: Number,
-                        required: true
-                    }
-                }
-            ]
-        }
-    ]
-});
+    Bets: {
+        type: [Object],  // This stores bet objects
+        default: []
+    }
+}, { timestamps: true });
 
-// Create model
 export default mongoose.model('Game', gameSchema);

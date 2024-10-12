@@ -1,10 +1,7 @@
 import express from 'express';
-import { initializeCards, calculateAmounts, startTimer, getTimer, placeBet } from '../controllers/cardController.js';
+import { calculateAmounts, getTimer, placeBet, startTimer } from '../controllers/cardController.js';
 
 const router = express.Router();
-
-// Route to initialize cards
-router.post('/initialize', initializeCards);
 
 // Get the current timer value
 router.get('/get-timer', getTimer);
@@ -16,5 +13,6 @@ router.post('/start-timer', startTimer);
 router.get('/calculate', calculateAmounts);
 
 router.post('/place-bet', placeBet);
+
 
 export default router;
