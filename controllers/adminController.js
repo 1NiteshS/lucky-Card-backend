@@ -222,3 +222,31 @@ export const getAdminProfile = async (req, res) => {
     });
   }
 };
+
+export const getCurrentGame = async (req, res) => {
+  try {
+    // Find the most recent game
+    const currentGame = await Game.findOne().sort({ createdAt: -1 });
+
+    if (!currentGame) {
+      return res.status(404).json({ message: 'No active game found' });
+    }
+
+    // Return the game ID and any other relevant information
+    res.status(200).json({
+      success: true,
+      data: {
+        gameId: currentGame._id,
+        gameNo: currentGame.GameNo, // Assuming you have a GameNo field
+        createdAt: currentGame.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching current game:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching current game',
+      error: error.message
+    });
+  }
+};

@@ -9,4 +9,4 @@ const SelectedCardSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 
-export default mongoose.model('SelectedCard', SelectedCardSchema);3
+export default mongoose.model('SelectedCard', SelectedCardSchema);

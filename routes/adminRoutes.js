@@ -8,6 +8,7 @@ import {
   resetPassword,
   getAllAdmins,
   getAdminProfile,
+  getCurrentGame,
 } from '../controllers/adminController.js';
 import {authAdmin, authSuperAdmin} from '../middleware/auth.js';
 
@@ -20,5 +21,6 @@ router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
 router.get('/all-admins', getAllAdmins);
 router.get("/profile/:adminId", authAdmin, getAdminProfile);
+router.get('/current-game', getCurrentGame);
 
 export default router;

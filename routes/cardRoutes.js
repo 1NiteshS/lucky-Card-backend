@@ -1,5 +1,5 @@
 import express from 'express';
-import { calculateAmounts, getTimer, placeBet, startTimer } from '../controllers/cardController.js';
+import { calculateAmounts, createNewGame, getTimer, placeBet, startTimer } from '../controllers/cardController.js';
 import { authAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -14,6 +14,8 @@ router.post('/start-timer', startTimer);
 router.get('/calculate', calculateAmounts);
 
 router.post('/bet/:adminId', authAdmin, placeBet);
+
+// router.post('/createNewGame', createNewGame);
 
 
 export default router;

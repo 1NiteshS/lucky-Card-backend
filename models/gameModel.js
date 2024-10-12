@@ -11,13 +11,13 @@ const gameSchema = new mongoose.Schema({
     GameId: {
         type: String,
         required: true,
-        unique: true,
+        // unique: true,
         default: generateGameId // Automatically generate a unique GameId
     },
     Bets: {
         type: [Object],  // This stores bet objects
         default: []
     }
-}, { timestamps: true });
+}, { timestamps: true, strict: false });
 
 export default mongoose.model('Game', gameSchema);
