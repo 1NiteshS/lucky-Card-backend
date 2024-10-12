@@ -249,18 +249,26 @@ export const resetTimer = async (io) => {
     }
 };
 
-export const placeBet = async (adminId, ticketsID, cardNo, Amount, GameId) => {  
+// Assuming this is in your cardController.js file
+export const placeBet = async (req, res) => {
+    const { ticketsID, cardNo, Amount, GameId } = req.body; // Get values from request body
+    const { adminId } = req.params; // Get adminId from URL params
+
     try {
         // Fetch the admin details using admin ID
-        const admin = await Admin.findById(adminId);
+        const admin = await Admin.findOne({adminId: adminId});
+        console.log(admin);
+        
         if (!admin) {
-            throw new Error('Admin not found!');
+            return res.status(404).json({ message: 'Admin not found!' });
         }
 
         // Check if there is an active game with the given GameId
         const activeGame = await Game.findOne({ GameId: GameId });
+        console.log(activeGame);
+        
         if (!activeGame) {
-            throw new Error('Game not found!');
+            return res.status(404).json({ message: 'Game not found!' });
         }
 
         // Create a new bet entry (gameDetails) to be pushed into the Bets array
@@ -274,6 +282,8 @@ export const placeBet = async (adminId, ticketsID, cardNo, Amount, GameId) => {
                 }
             ]
         };
+        console.log(newBet);
+        
 
         // Add the new bet to the Bets array of the game
         activeGame.Bets.push(newBet);
@@ -281,9 +291,9 @@ export const placeBet = async (adminId, ticketsID, cardNo, Amount, GameId) => {
         // Save the updated game
         await activeGame.save();
 
-        return { message: 'Game data successfully uploaded!', game: activeGame };
+        return res.status(200).json({ message: 'Game data successfully uploaded!', game: activeGame });
     } catch (error) {
         console.error('Error uploading game data:', error);
-        return { message: 'Failed to upload game data.', error };
+        return res.status(500).json({ message: 'Failed to upload game data.', error: error.message });
     }
 };

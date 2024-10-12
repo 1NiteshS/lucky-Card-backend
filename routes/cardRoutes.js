@@ -1,5 +1,6 @@
 import express from 'express';
 import { calculateAmounts, getTimer, placeBet, startTimer } from '../controllers/cardController.js';
+import { authAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -12,7 +13,7 @@ router.post('/start-timer', startTimer);
 // Route to calculate total, lowest, and perform operations
 router.get('/calculate', calculateAmounts);
 
-router.post('/place-bet', placeBet);
+router.post('/bet/:adminId', authAdmin, placeBet);
 
 
 export default router;
