@@ -337,136 +337,11 @@ const saveSelectedCard = async (selectedAmount, gameId) => {
 };
 
 
-export const placeBet = async (req, res) => {
-    try {
-        const { gameId, adminId, cards } = req.body;
-
-        if (!gameId || !adminId || !cards) {
-            return res.status(400).json({ message: 'Invalid input data.' });
-        }
-
-        // Ensure all 12 cards are provided
-        const requiredCards = ['card1', 'card2', 'card3', 'card4', 'card5', 'card6', 'card7', 'card8', 'card9', 'card10', 'card11', 'card12'];
-        const missingCards = requiredCards.filter(card => !(card in cards));
-        if (missingCards.length > 0) {
-            return res.status(400).json({ message: `Missing cards: ${missingCards.join(', ')}` });
-        }
-
-        // Find or create the games entry
-        let games = await Games.findOne();
-        if (!games) {
-            games = new Games({ games: {} });
-        }
-
-        // Find or create the game
-        if (!games.games.has(gameId)) {
-            games.games.set(gameId, { gameId, admins: {} });
-        }
-
-        const currentGame = games.games.get(gameId);
-
-        // Find or create the admin under the current game
-        if (!currentGame.admins.has(adminId)) {
-            currentGame.admins.set(adminId, { adminId, tickets: {} });
-        }
-
-        const currentAdmin = currentGame.admins.get(adminId);
-
-        // Generate a unique ticket ID
-        const ticketId = uuidv4();
-
-        // Find the next ticket number (ticket1, ticket2, etc.)
-        const ticketCount = currentAdmin.tickets.size;
-        const nextTicketKey = `ticket${ticketCount + 1}`;
-
-        // Add the new ticket
-        currentAdmin.tickets.set(nextTicketKey, {
-            ticketId,
-            cards: {
-                card1: cards.card1 || 0,
-                card2: cards.card2 || 0,
-                card3: cards.card3 || 0,
-                card4: cards.card4 || 0,
-                card5: cards.card5 || 0,
-                card6: cards.card6 || 0,
-                card7: cards.card7 || 0,
-                card8: cards.card8 || 0,
-                card9: cards.card9 || 0,
-                card10: cards.card10 || 0,
-                card11: cards.card11 || 0,
-                card12: cards.card12 || 0
-            }
-        });
-
-        // Save the updated game
-        await games.save();
-
-        return res.json({
-            message: 'Bet placed successfully',
-            ticket: currentAdmin.tickets.get(nextTicketKey)
-        });
-    } catch (err) {
-        console.error('Error placing bet:', err);
-        return res.status(500).json({ message: 'Error placing the bet', error: err.message });
-    }
-};
 
 
-// export const placeBet = async (req, res) => {
-//     try {
-//         // Find the game timer
-//         let timer = await Timer.findOne({ timerId: 'game-timer' });
 
-//         // Check if the timer is running
-//         if (!timer || !timer.isRunning) {
-//             return res.status(400).json({ message: 'No active game. Betting is closed.' });
-//         }
 
-//         // Find the current game
-//         const currentGame = await Game.findOne().sort({ GameNo: -1 });
 
-//         if (!currentGame) {
-//             return res.status(400).json({ message: 'No game in progress.' });
-//         }
-
-//         // Extract bet details from request body
-//         const { AdminId, cards } = req.body;
-
-//         if (!cards || !AdminId || cards.length === 0) {
-//             return res.status(400).json({ message: 'Invalid bet data. Cards are required.' });
-//         }
-
-//         // Generate a unique ticket ID
-//         const ticketId = uuidv4();
-
-//         // Create a new ticket with its associated bets (cards)
-//         const newTicket = {
-//             ticketId,
-//             AdminId,
-//             cards // The cards placed in this ticket
-//         };
-
-//         // Push the new ticket into the current game's bets
-//         currentGame.Tickets.push(newTicket);
-
-//         await currentGame.save();
-
-//         // Return the response with the new structure
-//         return res.json({
-//             message: 'Bet placed successfully',
-//             gameNo: currentGame.GameNo,
-//             bets: {
-//                 AdminId,
-//                 ticketId: {
-//                     uniqueTicketId: ticketId,
-//                     cards // Return the cards placed in the ticket
-//                 }
-//             }
-//         });
-//     } catch (err) {
-//         return res.status(500).json({ message: 'Error placing the bet', error: err.message });
-//     }
-// };
 
 
 
@@ -483,6 +358,7 @@ export const createNewGame = async () => {
 
     return newGameNumber;
 };
+
 
 // Function to start the timer
 export const startTimer = async (io) => {
@@ -534,5 +410,96 @@ export const resetTimer = async (io) => {
         // Start the timer again after resetting
         startTimer(io);
         io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: true });
+    }
+};
+
+
+
+export const placeBet = async (req, res) => {
+    try {
+        // Check the game timer
+        let timer = await Timer.findOne({ timerId: 'game-timer' });
+
+        if (!timer || !timer.isRunning) {
+            return res.status(400).json({ message: 'No active game. Betting is closed.' });
+        }
+
+        // Extract bet details from request body
+        const { gameId, adminId, ticketsID, cardNo, Amount } = req.body;
+
+        if (!gameId || !adminId || !ticketsID || !cardNo || Amount == null) {
+            return res.status(400).json({ message: 'Invalid bet data. All fields are required.' });
+        }
+
+        // Find the current game by gameId
+        const currentGame = await Game.findOne({ gameID: gameId });
+
+        if (!currentGame) {
+            return res.status(400).json({ message: 'Game not found.' });
+        }
+
+        // Find the admin within the current game
+        const admin = currentGame.gameDetails.find(detail => detail.adminID === adminId);
+
+        if (!admin) {
+            return res.status(400).json({ message: 'Admin not found for this game.' });
+        }
+
+        // Ensure the cards array exists
+        if (!Array.isArray(admin.card)) {
+            admin.card = [];
+        }
+
+        // Check if the card already exists in the admin's bets
+        const existingCard = admin.card.find(card => card.cardNo === cardNo);
+        if (existingCard) {
+            // Update the amount if the card already exists
+            existingCard.Amount += Amount;
+        } else {
+            // Create a new card entry
+            const newCard = {
+                cardNo,
+                Amount
+            };
+            admin.card.push(newCard);
+        }
+
+        // Ensure tickets array exists
+        if (!Array.isArray(admin.tickets)) {
+            admin.tickets = [];
+        }
+
+        // Create a new ticket if it does not exist
+        let ticket = admin.tickets.find(ticket => ticket.ticketsID === ticketsID);
+        if (!ticket) {
+            ticket = {
+                ticketsID,
+                card: [] // Initialize cards in the ticket
+            };
+            admin.tickets.push(ticket);
+        }
+
+        // Push the new card into the ticket's card array
+        ticket.card.push({
+            cardNo,
+            Amount
+        });
+
+        // Save the updated game with the new ticket and card
+        await currentGame.save();
+
+        return res.json({
+            message: 'Bet placed successfully',
+            gameId: currentGame.gameID,
+            bets: {
+                adminId,
+                ticketsID,
+                cardNo,
+                Amount
+            }
+        });
+    } catch (err) {
+        console.error('Error placing bet:', err);
+        return res.status(500).json({ message: 'Error placing the bet', error: err.message });
     }
 };

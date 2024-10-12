@@ -1,6 +1,5 @@
 import express from 'express';
-import { initializeCards, calculateAmounts, startTimer, getTimer, placeBet} from '../controllers/cardController.js';
-import Timer from '../models/timerModel.js';
+import { initializeCards, calculateAmounts, startTimer, getTimer, placeBet } from '../controllers/cardController.js';
 
 const router = express.Router();
 
@@ -15,7 +14,6 @@ router.post('/start-timer', startTimer);
 
 // Route to calculate total, lowest, and perform operations
 router.get('/calculate', calculateAmounts);
-
 
 router.post('/place-bet', placeBet);
 
