@@ -1,12 +1,11 @@
 import mongoose from 'mongoose';
 
 const SelectedCardSchema = new mongoose.Schema({
-    id: { type: String, required: true, unique: true },
+    gameId: { type: String, required: true },
     cardId: { type: String, required: true },
     multiplier: { type: String, required: true },
     amount: { type: Number, required: true },
-    originalAmount: { type: Number, required: true },
-    createdAt: { type: Date, default: Date.now }
-});
+    // createdAt: { type: Date, default: Date.now }
+}, {timestamps: true});
 
 export default mongoose.model('SelectedCard', SelectedCardSchema);

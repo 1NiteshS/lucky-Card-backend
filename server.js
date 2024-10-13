@@ -41,37 +41,5 @@ app.use("/api/super-admin", superAdminRoutes);
 app.use("/api/admin", adminRoutes);
 app.use('/api/cards', cardRoutes);
 
-// Socket.io integration
-// io.on('connection', (socket) => {
-//     console.log('A user connected');
-
-//     // Client requests the current timer state
-//     socket.on('getTimer', async () => {
-//         const timer = await Timer.findOne({ timerId: 'game-timer' });
-//         if (timer) {
-//             socket.emit('timerUpdate', {
-//                 remainingTime: timer.remainingTime,
-//                 isRunning: timer.isRunning
-//             });
-//         } else {
-//             socket.emit('error', { message: 'No active timer found' });
-//         }
-//     });
-
-//     // Start timer when a client connects (if needed)
-//     socket.on('startTimer', () => {
-//         startTimer(io);  // Pass io instance to broadcast changes
-//     });
-
-//     // Reset timer on client request
-//     socket.on('resetTimer', () => {
-//         resetTimer(io);
-//     });
-
-//     socket.on('disconnect', () => {
-//         console.log('A user disconnected');
-//     });
-// });
-
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

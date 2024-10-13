@@ -3,12 +3,118 @@ import SelectedCard from '../models/selectedCardModel.js';
 import Timer from '../models/timerModel.js';
 import Game from '../models/gameModel.js';
 import Admin from '../models/Admin.js';
-import crypto from 'crypto';
+
+const cardNumbers = {
+    A001: 'Jheart',
+    A002: 'Jspade',
+    A003: 'Jdiamond',
+    A004: 'Jclub',
+    A005: 'Qheart',
+    A006: 'Qspade',
+    A007: 'Qdiamond',
+    A008: 'Qclub',
+    A009: 'Kheart',
+    A020: 'Kspade',
+    A011: 'Kdiamond',
+    A012: 'Kclub'
+};
+
+// Get all cards on frontend
+  export const getAllCards = async (req, res) => {
+    try {
+      const allCards = Object.entries(cardNumbers).map(([cardNo, cardName]) => ({
+        cardNo: parseInt(cardNo),
+        cardName
+      }));
+  
+      res.status(200).json({
+        success: true,
+        data: allCards
+      });
+    } catch (error) {
+      console.error('Error fetching all cards:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error fetching all cards',
+        error: error.message
+      });
+    }
+  };
+
+  // Post card number one by one
+export const postCardNumber = async (req, res) => {
+    try {
+      const { cardNo } = req.body;
+  
+      if (cardNo === undefined || cardNo === null) {
+        return res.status(400).json({
+          success: false,
+          message: 'Card number is required'
+        });
+      }
+  
+      const cardName = cardNumbers[cardNo];
+  
+      if (!cardName) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid card number'
+        });
+      }
+  
+      res.status(200).json({
+        success: true,
+        data: {
+          cardNo: cardNo,
+          cardName: cardName
+        }
+      });
+    } catch (error) {
+      console.error('Error processing card number:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error processing card number',
+        error: error.message
+      });
+    }
+};
+
+// Function to get the current gameID
+export const getCurrentGame = async (req, res) => {
+    try {
+        console.log("Game Id not working");
+        
+      // Find the most recent game
+      const currentGame = await Game.findOne().sort({ createdAt: -1 });
+      console.log(currentGame);
+      
+  
+      if (!currentGame) {
+        return res.status(404).json({ message: 'No active game found' });
+      }
+  
+      // Return the game ID and any other relevant information
+      res.status(200).json({
+        success: true,
+        // data: {
+        //   gameId: currentGame.gameId,
+        //   createdAt: currentGame.createdAt
+        // }
+      });
+    } catch (error) {
+      console.error('Error fetching current game:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error fetching current game',
+        error: error.message
+      });
+    }
+  };
+
 
 // Function to get the current timer state
 export const calculateAmounts = async (req, res) => {
     try {
-
         // Fetch the timer from the database
         const timer = await Timer.findOne({ timerId: 'game-timer' });
 
@@ -28,30 +134,20 @@ export const calculateAmounts = async (req, res) => {
             return res.status(404).json({ message: 'No games found' });
         }
 
-        // Initialize a variable to hold the winning card
-        let winningCard = null;
-
         const validAmounts = processGameBets(latestGame.Bets);
-        console.log(`Processing bet for validAmounts: ${JSON.stringify(validAmounts)}`);
 
-        const selectedAmount = selectRandomAmount(validAmounts);
-        console.log(`Processing bet for selectedAmount: ${JSON.stringify(selectedAmount)}`);
-        
-
-        const previousSelectedCards = await SelectedCard.find();
-        console.log(`Retrieved previous selected cards: ${JSON.stringify(previousSelectedCards)}`);
+        const WinningCard = selectRandomAmount(validAmounts);
+       
+        await saveSelectedCard(WinningCard, latestGame.GameId);
 
         // Emit timer update
         req.io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
-        console.log("Emitted timer update");
 
         await resetTimer(req.io);
-        console.log("Timer reset");
 
         res.status(200).json({
             message: 'Amounts calculated successfully',
-            previousSelectedCards,  // Return all previously selected cards
-            winningCard,            // Return the winning card
+            WinningCard,            // Return the winning card
         });
 
     } catch (err) {
@@ -65,13 +161,8 @@ const processGameBets = (bets) => {
     let totalAmount = 0;
     const amounts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
-    console.log(JSON.stringify(bets));
-    
-
     for(const bet of bets) {
-        // Access cards in the bet
-            console.log(bet.card);
-            
+        // Access cards in the bet            
             bet.card.forEach(card => {
                 if(card.cardNo == "A001") {
                     totalAmount += card.Amount;
@@ -126,10 +217,7 @@ const processGameBets = (bets) => {
         "10":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     }
 
-    console.log(`Total amount for all bets: ${totalAmount}`);
-
     const percAmount = totalAmount * 0.85;
-    console.log(`85% of totalAmount: ${percAmount}`);
 
     for(let i = 0; i < amounts.length; i++) {
         if(amounts[i]*10 < percAmount) {
@@ -193,18 +281,45 @@ function selectRandomAmount(validAmounts) {
 
 // Function to save the selected card data
 const saveSelectedCard = async (selectedAmount, gameId) => {
-    const uniqueId = uuidv4(); // Generate a unique ID
+
+    let cardId;
+    if(selectedAmount.index === 0) {
+        cardId = "A001";
+    } else if(selectedAmount.index === 1) {
+        cardId = "A002";
+    } else if(selectedAmount.index === 2) {
+        cardId = "A003";
+    } else if(selectedAmount.index === 3) {
+        cardId = "A004";
+    } else if(selectedAmount.index === 4) {
+        cardId = "A005";
+    } else if(selectedAmount.index === 5) {
+        cardId = "A006";
+    } else if(selectedAmount.index === 6) {
+        cardId = "A007";
+    } else if(selectedAmount.index === 7) {
+        cardId = "A008";
+    } else if(selectedAmount.index === 8) {
+        cardId = "A009";
+    } else if(selectedAmount.index === 9) {
+        cardId = "A010";
+    } else if(selectedAmount.index === 10) {
+        cardId = "A011";
+    } else if(selectedAmount.index === 11) {
+        cardId = "A012";
+    } else {
+        throw new Error('Invalid index');
+    }
+
     const selectedCardData = {
-        id: uniqueId,
-        cardId: selectedAmount.cardKey,
-        multiplier: selectedAmount.multiplier,
-        amount: selectedAmount.amount,
-        originalAmount: selectedAmount.originalAmount,
+        gameId: gameId,
+        cardId,
+        multiplier: selectedAmount.key,
+        amount: selectedAmount.value,
     };
 
     const selectedCard = new SelectedCard(selectedCardData);
     await selectedCard.save();
-    console.log(`Selected card saved for game ${gameId}: ${JSON.stringify(selectedCardData)}`);
 };
 
 // Function to create a new GameId and store it in the database
@@ -224,7 +339,7 @@ export const startTimer = async (io) => {
     let timer = await Timer.findOne({ timerId: 'game-timer' });
 
     if (!timer) {
-        timer = new Timer({ timerId: 'game-timer', remainingTime: 15, isRunning: true });
+        timer = new Timer({ timerId: 'game-timer', remainingTime: 30, isRunning: true });
         await timer.save();
     }
 
@@ -247,7 +362,6 @@ export const startTimer = async (io) => {
 
             // Create a new GameId dynamically when the timer hits zero
             const newGameNumber = await createNewGame();
-            console.log(`New Game Created with GameNumber: ${newGameNumber}`);
 
             // Emit timer stop event
             io.emit('timerUpdate', { remainingTime: 0, isRunning: false });
@@ -257,6 +371,53 @@ export const startTimer = async (io) => {
         }
     }, 1000);
 };
+
+// export const startTimer = async (res, io) => {
+//     let timer = await Timer.findOne({ timerId: 'game-timer' });
+
+//     if (!timer) {
+//         timer = new Timer({ timerId: 'game-timer', remainingTime: 5, isRunning: true });
+//         await timer.save();
+//     }
+
+//     timer.isRunning = true;
+//     await timer.save();
+//     // io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
+
+//     let timerInterval = setInterval(async () => {
+//         if (timer.remainingTime > 0) {
+//             timer.remainingTime -= 1;
+//             await timer.save();
+
+//             // Emit real-time update to all clients
+//             // io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
+//         } else {
+//             // Timer hit zero, stop the timer
+//             clearInterval(timerInterval);
+//             timer.isRunning = false;
+//             await timer.save();
+
+//             // Create a new GameId dynamically when the timer hits zero
+//             const newGameNumber = await createNewGame();
+
+//             // Emit timer stop event
+//             // io.emit('timerUpdate', { remainingTime: 0, isRunning: false });
+
+//             // Delete the timer object after the countdown finishes
+//             await Timer.deleteOne({ timerId: 'game-timer' });
+
+//             // Optionally notify the frontend that the timer object is deleted
+//             // io.emit('timerDeleted', { message: 'Timer deleted, waiting for reset.' });
+
+//             // Return an empty response
+//             // res.status(200).json({ message: 'Timer completed and deleted', newGameNumber });
+//             return; // Or you could return a specific response like `return null;` if needed
+//         }
+//         return;
+//     }, 1000);
+//     return;
+// };
+
 
 export const getTimer = async (req, res) => {
     try {
@@ -280,7 +441,7 @@ export const resetTimer = async (io) => {
     let timer = await Timer.findOne({ timerId: 'game-timer' });
 
     if (timer) {
-        timer.remainingTime = 20;  // Reset timer to 30 seconds
+        timer.remainingTime = 30;  // Reset timer to 30 seconds
         await timer.save();
 
         // Start the timer again after resetting
@@ -300,6 +461,23 @@ export const placeBet = async (req, res) => {
         
         if (!admin) {
             return res.status(404).json({ message: 'Admin not found!' });
+        }
+
+        // Calculate the total bet amount from all the cards
+        let totalAmount = 0;
+        if (Array.isArray(cards)) {
+            cards.forEach(card => {
+                if (card.Amount) {
+                    totalAmount += card.Amount;  // Accumulate the amount from each card
+                }
+            });
+        }
+
+        // Check if admin has sufficient balance
+        if (admin.wallet < totalAmount) {
+            return res
+            .status(400)
+            .json({ message: "Insufficient balance in wallet!" });
         }
 
         // Check if there is an active game with the given GameId
@@ -331,10 +509,17 @@ export const placeBet = async (req, res) => {
         // Add the new bet to the Bets array of the game
         activeGame.Bets.push(newBet);
 
-        // Save the updated game
-        await activeGame.save();
+        // Deduct the total bet amount from admin's wallet
+        admin.wallet -= totalAmount;
 
-        return res.status(200).json({ message: 'Game data successfully uploaded!', game: activeGame });
+        // Save the updated game and admin wallet
+        await Promise.all([activeGame.save(), admin.save()]);
+
+        return res.status(200).json({ 
+            message: 'Game data successfully uploaded and bet placed successfully!', 
+            game: activeGame,
+            updatedWalletBalance: admin.wallet,
+        });
     } catch (error) {
         console.error('Error uploading game data:', error);
         return res.status(500).json({ message: 'Failed to upload game data.', error: error.message });
