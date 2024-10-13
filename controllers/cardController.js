@@ -354,7 +354,7 @@ export const startTimer = async (io) => {
     let timer = await Timer.findOne({ timerId: 'game-timer' });
 
     if (!timer) {
-        timer = new Timer({ timerId: 'game-timer', remainingTime: 30, isRunning: true });
+        timer = new Timer({ timerId: 'game-timer', remainingTime: 100, isRunning: true });
         await timer.save();
     }
 
@@ -456,7 +456,7 @@ export const resetTimer = async (io) => {
     let timer = await Timer.findOne({ timerId: 'game-timer' });
 
     if (timer) {
-        timer.remainingTime = 30;  // Reset timer to 30 seconds
+        timer.remainingTime = 100;  // Reset timer to 30 seconds
         await timer.save();
 
         // Start the timer again after resetting
