@@ -337,6 +337,26 @@ const saveSelectedCard = async (selectedAmount, gameId) => {
     await selectedCard.save();
 };
 
+// Controller function to fetch all selected cards
+export const getAllSelectedCards = async (req, res) => {
+    try {
+        // Retrieve all selected cards from the database
+        const selectedCards = await SelectedCard.find();
+
+        // Send the selected cards as a response
+        res.status(200).json({
+            success: true,
+            data: selectedCards,
+        });
+    } catch (error) {
+        console.error('Error fetching selected cards:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching selected cards',
+        });
+    }
+};
+
 // Function to create a new GameId and store it in the database
 export const createNewGame = async () => {
     const lastGame = await Game.findOne().sort({ createdAt: -1 }); // Get the last game

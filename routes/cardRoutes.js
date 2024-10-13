@@ -1,5 +1,5 @@
 import express from 'express';
-import { calculateAmounts, getAllCards, getCurrentGame, getTimer, placeBet, postCardNumber, startTimer } from '../controllers/cardController.js';
+import { calculateAmounts, getAllCards, getAllSelectedCards, getCurrentGame, getTimer, placeBet, postCardNumber, startTimer } from '../controllers/cardController.js';
 import { authAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -24,6 +24,8 @@ router.post('/card-number', postCardNumber);
 
 // Route to get current game
 router.get('/current-game', getCurrentGame);
+
+router.get('/selected-cards', getAllSelectedCards);
 
 // router.post('/createNewGame', createNewGame);
 
