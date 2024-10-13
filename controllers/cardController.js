@@ -3,6 +3,7 @@ import SelectedCard from '../models/selectedCardModel.js';
 import Timer from '../models/timerModel.js';
 import Game from '../models/gameModel.js';
 import Admin from '../models/Admin.js';
+import { socketClient } from '../socket/sockectServer.js';
 
 const cardNumbers = {
     'A001': 'Jheart',
@@ -139,9 +140,9 @@ export const calculateAmounts = async (req, res) => {
         await saveSelectedCard(WinningCard, latestGame.GameId);
 
         // Emit timer update
-        req.io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
+        // req.io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
 
-        await resetTimer(req.io);
+        // await resetTimer(req.io);
 
         res.status(200).json({
             message: 'Amounts calculated successfully',
@@ -370,7 +371,7 @@ export const createNewGame = async () => {
 };
 
 // Function to start the timer
-export const startTimer = async (io) => {
+export const startTimer = async () => {
     let timer = await Timer.findOne({ timerId: 'game-timer' });
 
     if (!timer) {
@@ -380,15 +381,15 @@ export const startTimer = async (io) => {
 
     timer.isRunning = true;
     await timer.save();
-    io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
+
+    socketClient.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
 
     const timerInterval = setInterval(async () => {
         if (timer.remainingTime > 0) {
             timer.remainingTime -= 1;
             await timer.save();
 
-            // Emit real-time update to all clients
-            io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
+            socketClient.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
         } else {
             // Timer hit zero, stop the timer
             clearInterval(timerInterval);
@@ -399,60 +400,13 @@ export const startTimer = async (io) => {
             const newGameNumber = await createNewGame();
 
             // Emit timer stop event
-            io.emit('timerUpdate', { remainingTime: 0, isRunning: false });
+            socketClient.emit('timerUpdate', { remainingTime: 0, isRunning: false });
 
             // Reset the timer and start it again
-            resetTimer(io);
+            resetTimer();
         }
     }, 1000);
 };
-
-// export const startTimer = async (res, io) => {
-//     let timer = await Timer.findOne({ timerId: 'game-timer' });
-
-//     if (!timer) {
-//         timer = new Timer({ timerId: 'game-timer', remainingTime: 5, isRunning: true });
-//         await timer.save();
-//     }
-
-//     timer.isRunning = true;
-//     await timer.save();
-//     // io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
-
-//     let timerInterval = setInterval(async () => {
-//         if (timer.remainingTime > 0) {
-//             timer.remainingTime -= 1;
-//             await timer.save();
-
-//             // Emit real-time update to all clients
-//             // io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
-//         } else {
-//             // Timer hit zero, stop the timer
-//             clearInterval(timerInterval);
-//             timer.isRunning = false;
-//             await timer.save();
-
-//             // Create a new GameId dynamically when the timer hits zero
-//             const newGameNumber = await createNewGame();
-
-//             // Emit timer stop event
-//             // io.emit('timerUpdate', { remainingTime: 0, isRunning: false });
-
-//             // Delete the timer object after the countdown finishes
-//             await Timer.deleteOne({ timerId: 'game-timer' });
-
-//             // Optionally notify the frontend that the timer object is deleted
-//             // io.emit('timerDeleted', { message: 'Timer deleted, waiting for reset.' });
-
-//             // Return an empty response
-//             // res.status(200).json({ message: 'Timer completed and deleted', newGameNumber });
-//             return; // Or you could return a specific response like `return null;` if needed
-//         }
-//         return;
-//     }, 1000);
-//     return;
-// };
-
 
 export const getTimer = async (req, res) => {
     try {
@@ -471,8 +425,9 @@ export const getTimer = async (req, res) => {
     }
 };
 
+
 // Function to reset the timer
-export const resetTimer = async (io) => {
+export const resetTimer = async () => {
     let timer = await Timer.findOne({ timerId: 'game-timer' });
 
     if (timer) {
@@ -480,8 +435,8 @@ export const resetTimer = async (io) => {
         await timer.save();
 
         // Start the timer again after resetting
-        startTimer(io);
-        io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: true });
+        startTimer();
+        socketClient.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: true });
     }
 };
 
