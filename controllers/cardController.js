@@ -155,7 +155,13 @@ export const calculateAmounts = async (req, res) => {
 };
 
 // Function to process the bets of each game
-const processGameBets = (bets) => {
+const processGameBets = (bets) => { 
+    // Check if bets array is empty
+    if (!bets || bets.length === 0) {
+        console.log("No bets placed. Skipping bet processing...");
+        return {}; // Returning an empty object or any default value to avoid errors
+    }
+
     let totalAmount = 0;
     const amounts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
@@ -255,6 +261,12 @@ const processGameBets = (bets) => {
 
 // Function to find random non-zero value and its index
 function selectRandomAmount(validAmounts) {
+
+    if (Object.keys(validAmounts).length === 0) {
+        console.log("Valid amounts is empty.");
+        return { key: "0", index: 0, value: 0 }; // Return the default structure
+    }
+    
     let nonZeroEntries = [];
   
     // Iterate through validAmounts to find non-zero values
@@ -279,6 +291,11 @@ function selectRandomAmount(validAmounts) {
 
 // Function to save the selected card data
 const saveSelectedCard = async (selectedAmount, gameId) => {
+   
+    if (Object.keys(selectedAmount).length === 0) {
+        console.log("selected amounts is empty.");
+        return {}; // Return an empty object if validAmounts is empty
+    }
 
     let cardId;
     if(selectedAmount.index === 0) {
