@@ -5,25 +5,25 @@ import Game from '../models/gameModel.js';
 import Admin from '../models/Admin.js';
 
 const cardNumbers = {
-    A001: 'Jheart',
-    A002: 'Jspade',
-    A003: 'Jdiamond',
-    A004: 'Jclub',
-    A005: 'Qheart',
-    A006: 'Qspade',
-    A007: 'Qdiamond',
-    A008: 'Qclub',
-    A009: 'Kheart',
-    A020: 'Kspade',
-    A011: 'Kdiamond',
-    A012: 'Kclub'
+    'A001': 'Jheart',
+    'A002': 'Jspade',
+    'A003': 'Jdiamond',
+    'A004': 'Jclub',
+    'A005': 'Qheart',
+    'A006': 'Qspade',
+    'A007': 'Qdiamond',
+    'A008': 'Qclub',
+    'A009': 'Kheart',
+    'A020': 'Kspade',
+    'A011': 'Kdiamond',
+    'A012': 'Kclub'
 };
 
 // Get all cards on frontend
   export const getAllCards = async (req, res) => {
     try {
       const allCards = Object.entries(cardNumbers).map(([cardNo, cardName]) => ({
-        cardNo: parseInt(cardNo),
+        cardNo: cardNo,
         cardName
       }));
   
@@ -82,8 +82,6 @@ export const postCardNumber = async (req, res) => {
 // Function to get the current gameID
 export const getCurrentGame = async (req, res) => {
     try {
-        console.log("Game Id not working");
-        
       // Find the most recent game
       const currentGame = await Game.findOne().sort({ createdAt: -1 });
       console.log(currentGame);
@@ -96,10 +94,10 @@ export const getCurrentGame = async (req, res) => {
       // Return the game ID and any other relevant information
       res.status(200).json({
         success: true,
-        // data: {
-        //   gameId: currentGame.gameId,
-        //   createdAt: currentGame.createdAt
-        // }
+        data: {
+          gameId: currentGame.GameId,
+          createdAt: currentGame.createdAt
+        }
       });
     } catch (error) {
       console.error('Error fetching current game:', error);
