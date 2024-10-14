@@ -168,14 +168,14 @@ export const calculateAmounts = async () => {
         await saveSelectedCard(WinningCard, latestGame.GameId);
 
         // Respond with the winning card information
-        return {
+        return [{
             message: 'Amounts calculated successfully',
             WinningCard,  // Return the winning card
-        };
+        }];
 
     } catch (err) {
         console.error(`Error during calculation: ${err}`);
-        return { message: 'Error calculating amounts', error: err.message };
+        return [{ message: 'Error calculating amounts', error: err.message }];
     }
 };
 
