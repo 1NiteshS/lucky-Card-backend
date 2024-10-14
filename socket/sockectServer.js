@@ -209,19 +209,21 @@ import Game from '../models/gameModel.js';
 import { Server } from "socket.io";
 import { calculateAmounts as calcAmounts } from '../controllers/cardController.js';
 
+let mainTime = 100;
+
 let timer = {
-    remainingTime: 15,
+    remainingTime: mainTime,
     isRunning: false
 };
 
-const CALCULATION_START_TIME = 10; 
+const CALCULATION_START_TIME = 9; 
 
 let timerInterval;
 // Start and manage the timer
 const startTimer = (socket) => {
     if (!timer.isRunning) {
         timer.isRunning = true;
-        timer.remainingTime = 15;
+        timer.remainingTime = mainTime;
         broadcastTimerUpdate(socket);
 
         timerInterval = setInterval(async () => {
@@ -229,7 +231,6 @@ const startTimer = (socket) => {
                 if (timer.remainingTime > 0) {
                     timer.remainingTime -= 1;
                     console.log(timer.remainingTime);
-                    
                     
                     // Check if calculations should start
                     if (timer.remainingTime == CALCULATION_START_TIME) {
@@ -271,7 +272,7 @@ const startTimer = (socket) => {
 
 // Helper to reset and restart the timer
 const resetAndRestartTimer = (socket) => {
-    timer.remainingTime = 15;
+    timer.remainingTime = mainTime;
     timer.isRunning = false;
     broadcastTimerUpdate(socket);
     startTimer(socket);

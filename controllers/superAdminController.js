@@ -7,10 +7,20 @@ import Admin from '../models/Admin.js';
 export const login = async (req, res) => {
   try {
     const { username, password } = req.body;
+    
     const superAdmin = await SuperAdmin.findOne({ username });
     
-    if (!superAdmin || !(await bcrypt.compare(password, superAdmin.password))) {
-      return res.status(401).send({ error: 'Invalid login credentials' });
+    // if (!superAdmin || !(await bcrypt.compare(password, superAdmin.password))) {
+    //   return res.status(401).send({ error: 'Invalid login credentials' });
+    // }
+
+    if (!superAdmin) {
+      return res.status(401).send({ error: 'Super admin not found' });
+    }
+    
+    const passwordMatch = await bcrypt.compare(password, superAdmin.password);
+    if (!passwordMatch) {
+      return res.status(401).send({ error: 'Password is incorrect' });
     }
     
     const token = jwt.sign({ _id: superAdmin._id }, process.env.JWT_SECRET);
