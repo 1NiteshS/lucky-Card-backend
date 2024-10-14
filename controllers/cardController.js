@@ -109,47 +109,73 @@ export const getCurrentGame = async (req, res) => {
     }
 };
 
+const CALCULATION_START_TIME = 10; 
+
 // Function to get the current timer state
-export const calculateAmounts = async (req, res) => {
+// export const calculateAmounts = async (req, res, remainingTime) => {
+//     try {
+//         console.log(remainingTime);
+        
+//         if (remainingTime > CALCULATION_START_TIME) {
+//             console.log(`Waiting for the timer to reach 10 seconds... Current time: ${remainingTime}`);
+//             return res.status(200).json({ message: `Waiting for the timer to reach 10 seconds... Current time: ${remainingTime}` });
+//         }
+
+//         // Fetch the latest game from the database with lean() to avoid Mongoose document wrapper
+//         const latestGame = await Game.findOne().sort({ createdAt: -1 }).lean(); // Adjust sort based on your schema
+//         if (!latestGame) {
+//             return res.status(404).json({ message: 'No games found' });
+//         }
+
+//         const validAmounts = processGameBets(latestGame.Bets);
+
+//         const WinningCard = selectRandomAmount(validAmounts);
+
+//         await saveSelectedCard(WinningCard, latestGame.GameId);
+
+//         // Emit timer update
+//         // req.io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
+
+//         // await resetTimer(req.io);
+
+//         res.status(200).json({
+//             message: 'Amounts calculated successfully',
+//             WinningCard,            // Return the winning card
+//         });
+
+//     } catch (err) {
+//         console.error(`Error during calculation: ${err}`);
+//         res.status(500).json({ message: 'Error calculating amounts', error: err.message });
+//     }
+// };
+
+// This function will calculate amounts based on remaining time
+export const calculateAmounts = async () => {
     try {
-        // Fetch the timer from the database
-        // const timer = await Timer.findOne({ timerId: 'game-timer' });
-
-        // // Check if the timer is running and the remaining time is <= 10 seconds
-        // if (!timer.isRunning || timer.remainingTime > 10) {
-        //     console.log(`Waiting for the timer to reach 10 seconds... Current time: ${timer.remainingTime}`);
-        //     return res.status(200).json({ message: `Waiting for the timer to reach 10 seconds... Current time: ${timer.remainingTime}` });
-        // }
-
-        // // Stop the timer
-        // timer.isRunning = false;
-        // await timer.save();
-
-        // Fetch the latest game from the database with lean() to avoid Mongoose document wrapper
+        // Fetch the latest game from the database
         const latestGame = await Game.findOne().sort({ createdAt: -1 }).lean(); // Adjust sort based on your schema
         if (!latestGame) {
-            return res.status(404).json({ message: 'No games found' });
+            return { message: 'No games found' };
         }
 
+        // Process the bets and calculate valid amounts
         const validAmounts = processGameBets(latestGame.Bets);
 
+        // Select a random winning card from the valid amounts
         const WinningCard = selectRandomAmount(validAmounts);
-       
+
+        // Save the selected winning card for the current game
         await saveSelectedCard(WinningCard, latestGame.GameId);
 
-        // Emit timer update
-        // req.io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
-
-        // await resetTimer(req.io);
-
-        res.status(200).json({
+        // Respond with the winning card information
+        return {
             message: 'Amounts calculated successfully',
-            WinningCard,            // Return the winning card
-        });
+            WinningCard,  // Return the winning card
+        };
 
     } catch (err) {
         console.error(`Error during calculation: ${err}`);
-        res.status(500).json({ message: 'Error calculating amounts', error: err.message });
+        return { message: 'Error calculating amounts', error: err.message };
     }
 };
 
