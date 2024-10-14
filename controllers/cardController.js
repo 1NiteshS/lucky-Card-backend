@@ -3,7 +3,7 @@ import SelectedCard from '../models/selectedCardModel.js';
 import Timer from '../models/timerModel.js';
 import Game from '../models/gameModel.js';
 import Admin from '../models/Admin.js';
-import { socketClient } from '../socket/sockectServer.js';
+// import { socketClient } from '../socket/sockectServer.js';
 
 const cardNumbers = {
     'A001': 'Jheart',
@@ -21,28 +21,28 @@ const cardNumbers = {
 };
 
 // Get all cards on frontend
-  export const getAllCards = async (req, res) => {
-    try {
-      const allCards = Object.entries(cardNumbers).map(([cardNo, cardName]) => ({
-        cardNo: cardNo,
-        cardName
-      }));
-  
-      res.status(200).json({
-        success: true,
-        data: allCards
-      });
-    } catch (error) {
-      console.error('Error fetching all cards:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Error fetching all cards',
-        error: error.message
-      });
-    }
-  };
+export const getAllCards = async (req, res) => {
+try {
+    const allCards = Object.entries(cardNumbers).map(([cardNo, cardName]) => ({
+    cardNo: cardNo,
+    cardName
+    }));
 
-  // Post card number one by one
+    res.status(200).json({
+    success: true,
+    data: allCards
+    });
+} catch (error) {
+    console.error('Error fetching all cards:', error);
+    res.status(500).json({
+    success: false,
+    message: 'Error fetching all cards',
+    error: error.message
+    });
+}
+};
+
+// Post card number one by one
 export const postCardNumber = async (req, res) => {
     try {
       const { cardNo } = req.body;
@@ -83,49 +83,47 @@ export const postCardNumber = async (req, res) => {
 // Function to get the current gameID
 export const getCurrentGame = async (req, res) => {
     try {
-      // Find the most recent game
-      const currentGame = await Game.findOne().sort({ createdAt: -1 });
-      console.log(currentGame);
-      
-  
-      if (!currentGame) {
-        return res.status(404).json({ message: 'No active game found' });
-      }
-  
-      // Return the game ID and any other relevant information
-      res.status(200).json({
+        // Find the most recent game
+        const currentGame = await Game.findOne().sort({ createdAt: -1 });
+        console.log(currentGame);
+
+        if (!currentGame) {
+            return res.status(404).json({ message: 'No active game found' });
+        }
+
+        // Return the game ID and any other relevant information
+        res.status(200).json({
         success: true,
         data: {
-          gameId: currentGame.GameId,
-          createdAt: currentGame.createdAt
+            gameId: currentGame.GameId,
+            createdAt: currentGame.createdAt
         }
-      });
+        });
     } catch (error) {
-      console.error('Error fetching current game:', error);
-      res.status(500).json({
+        console.error('Error fetching current game:', error);
+        res.status(500).json({
         success: false,
         message: 'Error fetching current game',
         error: error.message
-      });
-    }
-  };
-
+     });
+    }
+};
 
 // Function to get the current timer state
 export const calculateAmounts = async (req, res) => {
     try {
         // Fetch the timer from the database
-        const timer = await Timer.findOne({ timerId: 'game-timer' });
+        // const timer = await Timer.findOne({ timerId: 'game-timer' });
 
-        // Check if the timer is running and the remaining time is <= 10 seconds
-        if (!timer.isRunning || timer.remainingTime > 10) {
-            console.log(`Waiting for the timer to reach 10 seconds... Current time: ${timer.remainingTime}`);
-            return res.status(200).json({ message: `Waiting for the timer to reach 10 seconds... Current time: ${timer.remainingTime}` });
-        }
+        // // Check if the timer is running and the remaining time is <= 10 seconds
+        // if (!timer.isRunning || timer.remainingTime > 10) {
+        //     console.log(`Waiting for the timer to reach 10 seconds... Current time: ${timer.remainingTime}`);
+        //     return res.status(200).json({ message: `Waiting for the timer to reach 10 seconds... Current time: ${timer.remainingTime}` });
+        // }
 
-        // Stop the timer
-        timer.isRunning = false;
-        await timer.save();
+        // // Stop the timer
+        // timer.isRunning = false;
+        // await timer.save();
 
         // Fetch the latest game from the database with lean() to avoid Mongoose document wrapper
         const latestGame = await Game.findOne().sort({ createdAt: -1 }).lean(); // Adjust sort based on your schema
@@ -269,30 +267,31 @@ function selectRandomAmount(validAmounts) {
     }
     
     let nonZeroEntries = [];
-  
+
     // Iterate through validAmounts to find non-zero values
     for (let key in validAmounts) {
-      validAmounts[key].forEach((value, index) => {
-        if (value !== 0) {
-          nonZeroEntries.push({ key, index, value });
-        }
-      });
+        validAmounts[key].forEach((value, index) => {
+            if (value !== 0) {
+                nonZeroEntries.push({ key, index, value });
+            }
+        });
     }
-  
+
     // Check if we have any non-zero entries
     if (nonZeroEntries.length === 0) {
       return null; // Return null if no non-zero values
     }
-  
+
     // Pick a random entry from the non-zero values
     const randomEntry = nonZeroEntries[Math.floor(Math.random() * nonZeroEntries.length)];
-  
+
     return randomEntry;
 }
 
 // Function to save the selected card data
 const saveSelectedCard = async (selectedAmount, gameId) => {
-   
+
+    // Check if selectedAmount is empty
     if (Object.keys(selectedAmount).length === 0) {
         console.log("selected amounts is empty.");
         return {}; // Return an empty object if validAmounts is empty
@@ -358,55 +357,55 @@ export const getAllSelectedCards = async (req, res) => {
     }
 };
 
-// Function to create a new GameId and store it in the database
-export const createNewGame = async () => {
-    const lastGame = await Game.findOne().sort({ createdAt: -1 }); // Get the last game
+// // Function to create a new GameId and store it in the database
+// export const createNewGame = async () => {
+//     const lastGame = await Game.findOne().sort({ createdAt: -1 }); // Get the last game
 
-    const newGame = new Game({
-        Bets: []  // Initialize an empty array for the bets
-    });
-    await newGame.save();
+//     const newGame = new Game({
+//         Bets: []  // Initialize an empty array for the bets
+//     });
+//     await newGame.save();
 
-    return lastGame;
-};
+//     return lastGame;
+// };
 
 // Function to start the timer
-export const startTimer = async () => {
-    let timer = await Timer.findOne({ timerId: 'game-timer' });
+// export const startTimer = async () => {
+//     let timer = await Timer.findOne({ timerId: 'game-timer' });
 
-    if (!timer) {
-        timer = new Timer({ timerId: 'game-timer', remainingTime: 100, isRunning: true });
-        await timer.save();
-    }
+//     if (!timer) {
+//         timer = new Timer({ timerId: 'game-timer', remainingTime: 100, isRunning: true });
+//         await timer.save();
+//     }
 
-    timer.isRunning = true;
-    await timer.save();
+//     timer.isRunning = true;
+//     await timer.save();
 
-    socketClient.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
+//     socketClient.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
 
-    const timerInterval = setInterval(async () => {
-        if (timer.remainingTime > 0) {
-            timer.remainingTime -= 1;
-            await timer.save();
+//     const timerInterval = setInterval(async () => {
+//         if (timer.remainingTime > 0) {
+//             timer.remainingTime -= 1;
+//             await timer.save();
 
-            socketClient.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
-        } else {
-            // Timer hit zero, stop the timer
-            clearInterval(timerInterval);
-            timer.isRunning = false;
-            await timer.save();
+//             socketClient.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
+//         } else {
+//             // Timer hit zero, stop the timer
+//             clearInterval(timerInterval);
+//             timer.isRunning = false;
+//             await timer.save();
 
-            // Create a new GameId dynamically when the timer hits zero
-            const newGameNumber = await createNewGame();
+//             // Create a new GameId dynamically when the timer hits zero
+//             const newGameNumber = await createNewGame();
 
-            // Emit timer stop event
-            socketClient.emit('timerUpdate', { remainingTime: 0, isRunning: false });
+//             // Emit timer stop event
+//             socketClient.emit('timerUpdate', { remainingTime: 0, isRunning: false });
 
-            // Reset the timer and start it again
-            resetTimer();
-        }
-    }, 1000);
-};
+//             // Reset the timer and start it again
+//             resetTimer();
+//         }
+//     }, 1000);
+// };
 
 export const getTimer = async (req, res) => {
     try {
@@ -424,7 +423,6 @@ export const getTimer = async (req, res) => {
         res.status(500).json({ message: 'Error fetching timer', error: err.message });
     }
 };
-
 
 // Function to reset the timer
 export const resetTimer = async () => {

@@ -1,5 +1,5 @@
 import express from 'express';
-import { calculateAmounts, getAllCards, getAllSelectedCards, getCurrentGame, getTimer, placeBet, postCardNumber, startTimer } from '../controllers/cardController.js';
+import { calculateAmounts, getAllCards, getAllSelectedCards, getCurrentGame, getTimer, placeBet, postCardNumber } from '../controllers/cardController.js';
 import { authAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -8,7 +8,7 @@ const router = express.Router();
 router.get('/get-timer', getTimer);
 
 // Start the timer
-router.post('/start-timer', startTimer);
+// router.post('/start-timer', startTimer);
 
 // Route to calculate total, lowest, and perform operations
 router.get('/calculate', calculateAmounts);

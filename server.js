@@ -36,8 +36,8 @@ app.use('/api/cards', cardRoutes);
 const PORT = process.env.PORT || 5000;
 
 const httpServer = http.createServer(app)
-await startSocket(httpServer);
+startSocket(httpServer);
 
 httpServer.listen(5000, () => {
-    console.log('HTTP server is running on port 3000');
-  });
+    console.log('HTTP server is running on port 5000');
+});
