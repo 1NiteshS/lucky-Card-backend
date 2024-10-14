@@ -15,7 +15,7 @@ const cardNumbers = {
     'A007': 'Qdiamond',
     'A008': 'Qclub',
     'A009': 'Kheart',
-    'A020': 'Kspade',
+    'A010': 'Kspade',
     'A011': 'Kdiamond',
     'A012': 'Kclub'
 };
