@@ -96,14 +96,14 @@ import Game from '../models/gameModel.js';
 
 import { Server } from "socket.io";
 let timer = {
-    remainingTime: 20,
+    remainingTime: 100,
     isRunning: false
 };
 let timerInterval;
 const startTimer = (socket) => {
     if (!timer.isRunning) {
         timer.isRunning = true;
-        timer.remainingTime = 20;
+        timer.remainingTime = 100;
         broadcastTimerUpdate(socket);
         timerInterval = setInterval(() => {
             if (timer.remainingTime > 0) {
@@ -126,7 +126,7 @@ const startTimer = (socket) => {
     }
 };
 const resetAndRestartTimer = (socket) => {
-    timer.remainingTime = 20;
+    timer.remainingTime = 100;
     timer.isRunning = false;
     broadcastTimerUpdate(socket);
     startTimer(socket);
