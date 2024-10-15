@@ -20,6 +20,7 @@ const startTimer = (socket) => {
         timer.remainingTime = mainTime;
         let calculatedAmounts = null;
         let gameID = null;
+        let previousGameID = null;
 
         broadcastTimerUpdate(socket);
 
@@ -38,14 +39,31 @@ const startTimer = (socket) => {
                     console.log(calculatedAmounts);
                     
 
-                    if (timer.remainingTime === mainTime - 3) { 
+                    if (timer.remainingTime === mainTime - 2) { 
                         const result = await getCurrentGame();
                         if (result.success) {
                             gameID = result.data.gameId;
+
+                            // Check if the new gameID is the same as the previous one
+                            if (gameID === previousGameID) {
+                                console.log('GameID unchanged, retrieving data again...');
+                                0// Call getCurrentGame again to fetch fresh data
+                                const refreshedResult = await getCurrentGame();
+                                if (refreshedResult.success) {
+                                    gameID = refreshedResult.data.gameId;
+                                } else {
+                                    console.error('Failed to refresh game data:', refreshedResult.message);
+                                }
+                            }
+                            // Update previousGameID for the next comparison
+                            previousGameID = gameID;
+
                         } else {
                             console.error('Failed to get current game:', result.message);
                         }
                     }
+                    console.log(gameID);
+                    
 
                     // Broadcast calculated amounts for the last CALCULATION_START_TIME seconds
                     if (timer.remainingTime <= CALCULATION_START_TIME && timer.remainingTime > 0) {
