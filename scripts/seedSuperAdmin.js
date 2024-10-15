@@ -1,8 +1,10 @@
 // scripts/seedSuperAdmin.js
-require('dotenv').config();
-const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
-const SuperAdmin = require('../models/SuperAdmin');
+import dotenv from 'dotenv';
+import mongoose from 'mongoose';
+import bcrypt from 'bcrypt';
+import SuperAdmin from '../models/SuperAdmin';
+
+dotenv.config();
 
 const seedSuperAdmin = async () => {
   try {
