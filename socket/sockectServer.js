@@ -36,7 +36,6 @@ const startTimer = (socket) => {
                         calculatedAmounts = await calcAmounts(timer.remainingTime);
                         console.log(calculatedAmounts);
                     }
-                    console.log(calculatedAmounts);
                     
 
                     if (timer.remainingTime === mainTime - 2) { 
@@ -62,7 +61,6 @@ const startTimer = (socket) => {
                             console.error('Failed to get current game:', result.message);
                         }
                     }
-                    console.log(gameID);
                     
 
                     // Broadcast calculated amounts for the last CALCULATION_START_TIME seconds
