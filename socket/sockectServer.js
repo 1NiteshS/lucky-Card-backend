@@ -48,7 +48,7 @@ const startTimer = (socket) => {
                     }
 
                     // Broadcast calculated amounts for the last CALCULATION_START_TIME seconds
-                    if (timer.remainingTime <= CALCULATION_START_TIME && timer.remainingTime >= 0) {
+                    if (timer.remainingTime <= CALCULATION_START_TIME && timer.remainingTime > 0) {
                         broadcastTimerUpdate(socket, gameID, calculatedAmounts);
                     } else {
                         broadcastTimerUpdate(socket, gameID);  // Just update the timer without amounts
