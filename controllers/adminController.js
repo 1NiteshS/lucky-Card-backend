@@ -138,7 +138,7 @@ export const resetPassword = async (req, res) => {
 
 export const getAllAdmins = async (req, res) => {
   try {
-    const admins = await Admin.findOne({});
+    const admins = await Admin.find({});
     
     
     const adminData = admins.map(admin => ({
