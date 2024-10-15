@@ -3,6 +3,7 @@ import SuperAdmin from '../models/SuperAdmin.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import Admin from '../models/Admin.js';
+import Game from '../models/gameModel.js'
 
 export const login = async (req, res) => {
   try {
@@ -24,9 +25,9 @@ export const login = async (req, res) => {
     }
     
     const token = jwt.sign({ _id: superAdmin._id }, process.env.JWT_SECRET);
-    res.send({ token });
+    return res.send({ token });
   } catch (error) {
-    res.status(400).send(error);
+    return res.status(400).send(error);
   }
 };
 
@@ -42,10 +43,10 @@ export const getAllAdmins = async (req, res) => {
       walletBalance: admin.wallet
     }));
 
-    res.status(200).json(adminData);
+    return res.status(200).json(adminData);
   } catch (error) {
     console.error('Error fetching admins:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 };
 
@@ -71,14 +72,14 @@ export const addToWallet = async (req, res) => {
     admin.wallet += Number(amount);
     await admin.save();
 
-    res.status(200).json({
+    return res.status(200).json({
       message: "Amount added to wallet successfully",
       adminId: admin.adminId,
       newBalance: admin.wallet,
     });
   } catch (error) {
     console.error("Error adding to wallet:", error);
-    res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 
@@ -107,7 +108,7 @@ export const getGameHistory = async (req, res) => {
       const hasPrevPage = page > 1;
 
       // Return response with games and pagination info
-      res.status(200).json({
+      return res.status(200).json({
           success: true,
           data: {
               games,
@@ -124,7 +125,7 @@ export const getGameHistory = async (req, res) => {
 
   } catch (error) {
       console.error('Error fetching game history:', error);
-      res.status(500).json({
+      return res.status(500).json({
           success: false,
           error: "Internal server error"
       });

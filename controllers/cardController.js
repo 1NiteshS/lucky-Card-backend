@@ -111,44 +111,6 @@ export const getCurrentGame = async (req, res) => {
 
 const CALCULATION_START_TIME = 10; 
 
-// Function to get the current timer state
-// export const calculateAmounts = async (req, res, remainingTime) => {
-//     try {
-//         console.log(remainingTime);
-        
-//         if (remainingTime > CALCULATION_START_TIME) {
-//             console.log(`Waiting for the timer to reach 10 seconds... Current time: ${remainingTime}`);
-//             return res.status(200).json({ message: `Waiting for the timer to reach 10 seconds... Current time: ${remainingTime}` });
-//         }
-
-//         // Fetch the latest game from the database with lean() to avoid Mongoose document wrapper
-//         const latestGame = await Game.findOne().sort({ createdAt: -1 }).lean(); // Adjust sort based on your schema
-//         if (!latestGame) {
-//             return res.status(404).json({ message: 'No games found' });
-//         }
-
-//         const validAmounts = processGameBets(latestGame.Bets);
-
-//         const WinningCard = selectRandomAmount(validAmounts);
-
-//         await saveSelectedCard(WinningCard, latestGame.GameId);
-
-//         // Emit timer update
-//         // req.io.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
-
-//         // await resetTimer(req.io);
-
-//         res.status(200).json({
-//             message: 'Amounts calculated successfully',
-//             WinningCard,            // Return the winning card
-//         });
-
-//     } catch (err) {
-//         console.error(`Error during calculation: ${err}`);
-//         res.status(500).json({ message: 'Error calculating amounts', error: err.message });
-//     }
-// };
-
 // This function will calculate amounts based on remaining time
 export const calculateAmounts = async () => {
     try {
@@ -186,6 +148,9 @@ const processGameBets = (bets) => {
         console.log("No bets placed. Skipping bet processing...");
         return {}; // Returning an empty object or any default value to avoid errors
     }
+
+    console.log(bets);
+    
 
     let totalAmount = 0;
     const amounts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
@@ -244,7 +209,7 @@ const processGameBets = (bets) => {
         "8":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         "9":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         "10":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    }
+    }  
 
     const percAmount = totalAmount * 0.85;
 
