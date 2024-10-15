@@ -19,20 +19,23 @@ const startTimer = (socket) => {
         timer.remainingTime = mainTime;
         broadcastTimerUpdate(socket);
 
+        let calculatedAmounts = null;
+
         timerInterval = setInterval(async () => {
             try {
                 if (timer.remainingTime > 0) {
                     timer.remainingTime -= 1;
                     console.log(timer.remainingTime);
                     
-                    // Check if calculations should start
-                    if (timer.remainingTime == CALCULATION_START_TIME) {
+                    // Calculate amounts when we reach 9 seconds
+                    if (timer.remainingTime === 9) {
                         console.log('Calculating amounts...');
-                        
-                        const calculatedAmounts = await calcAmounts(timer.remainingTime);
+                        calculatedAmounts = await calcAmounts(timer.remainingTime);
                         console.log(calculatedAmounts);
-                        
-                        
+                    }
+
+                    // Broadcast calculated amounts for the last 10 seconds (9 to 0)
+                    if (timer.remainingTime <= 9) {
                         broadcastTimerUpdate(socket, null, calculatedAmounts);
                     } else {
                         broadcastTimerUpdate(socket);  // Just update the timer without amounts
