@@ -38,7 +38,7 @@ const startTimer = (socket) => {
                     console.log(calculatedAmounts);
                     
 
-                    if (timer.remainingTime === 98) { 
+                    if (timer.remainingTime === mainTime - 3) { 
                         const result = await getCurrentGame();
                         if (result.success) {
                             gameID = result.data.gameId;
