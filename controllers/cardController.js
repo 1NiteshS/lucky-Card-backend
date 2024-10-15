@@ -409,7 +409,7 @@ const processGameBetsWithZeroRandomAndMin = async (bets) => {
     const randomMultiplier = multipliers[Math.floor(Math.random() * multipliers.length)];
 
     // 5. Call processGameBetsWithMinAmount
-    const minAmountResult = await processGameBetsWithMinAmount(databaseConnection);
+    const minAmountResult = await processGameBetsWithMinAmount(bets);
 
     // 6. Return result with random multiplier
     return {
