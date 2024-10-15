@@ -151,6 +151,7 @@ export const blockAdmin = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
 export const unblockAdmin = async (req, res) => {
   try {
     const { adminId } = req.body;
@@ -166,6 +167,7 @@ export const unblockAdmin = async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
 export const deleteAdmin = async (req, res) => {
   try {
     const { adminId } = req.body;

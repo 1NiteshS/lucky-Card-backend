@@ -2,7 +2,7 @@ import Game from '../models/gameModel.js';
 import { Server } from "socket.io";
 import { calculateAmounts as calcAmounts } from '../controllers/cardController.js';
 
-let mainTime = 15;
+let mainTime = 100;
 
 let timer = {
     remainingTime: mainTime,
