@@ -33,11 +33,8 @@ export const login = async (req, res) => {
 
 export const getAllAdmins = async (req, res) => {
   try {
-    const admins = await Admin.find({}, 'name email createdAt password wallet');
+    const admins = await Admin.find({});
 
-    console.log(admins.adminId);
-    
-    
     const adminData = admins.map(admin => ({
       adminId: admin.adminId,
       name: admin.name,
@@ -46,6 +43,9 @@ export const getAllAdmins = async (req, res) => {
       password: admin.password.replace(/./g, '*').slice(0, 10) + '...',
       walletBalance: admin.wallet
     }));
+
+    console.log(adminData);
+    
 
     return res.status(200).json(adminData);
   } catch (error) {

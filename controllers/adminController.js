@@ -75,10 +75,6 @@ export const login = async (req, res) => {
     if (!admin || !(await bcrypt.compare(password, admin.password))) {
       return res.status(401).send({ error: 'Invalid login credentials' });
     }
-
-    if (admin.isBlocked) {
-      return res.status(403).send({ error: 'Your account has been blocked. Please contact the Super Admin.' });
-    }
     
     if (!admin.isVerified) {
       return res.status(401).send({ error: 'Please verify your email first' });
@@ -142,7 +138,8 @@ export const resetPassword = async (req, res) => {
 
 export const getAllAdmins = async (req, res) => {
   try {
-    const admins = await Admin.find({}, 'name email createdAt password wallet');
+    const admins = await Admin.findOne({});
+    
     
     const adminData = admins.map(admin => ({
       name: admin.name,

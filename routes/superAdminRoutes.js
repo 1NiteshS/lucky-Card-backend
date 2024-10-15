@@ -7,7 +7,7 @@ import { calculateAmounts, chooseAlgorithm, getCurrentAlgorithm } from '../contr
 const router = express.Router();
 
 router.post('/login', login);
-router.get('/all-admins', authSuperAdmin, getAllAdmins);
+router.get('/all-admins', getAllAdmins);
 router.post('/add-to-wallet', authSuperAdmin, addToWallet);
 router.get('/game-history', authSuperAdmin, getGameHistory)
 
