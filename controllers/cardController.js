@@ -1,8 +1,9 @@
-import { v4 as uuidv4 } from 'uuid';
 import SelectedCard from '../models/selectedCardModel.js';
 import Timer from '../models/timerModel.js';
 import Game from '../models/gameModel.js';
 import Admin from '../models/Admin.js';
+import AdminGameResult from '../models/AdminGameResult.js';
+import { calculateAndStoreAdminWinnings } from './adminController.js';
 // import { socketClient } from '../socket/sockectServer.js';
 
 const cardNumbers = {
@@ -109,8 +110,6 @@ export const getCurrentGame = async (req, res) => {
     }
 };
 
-const CALCULATION_START_TIME = 10; 
-
 // This function will calculate amounts based on remaining time
 export const calculateAmounts = async () => {
     try {
@@ -129,10 +128,15 @@ export const calculateAmounts = async () => {
         // Save the selected winning card for the current game
         await saveSelectedCard(WinningCard, latestGame.GameId);
 
+        const adminResults = await calculateAdminResults(latestGame, WinningCard);
+
+        await calculateAndStoreAdminWinnings(latestGame.GameId);
+
         // Respond with the winning card information
         return {
             message: 'Amounts calculated successfully',
             WinningCard,  // Return the winning card
+            adminResults
         };
 
     } catch (err) {
@@ -348,56 +352,6 @@ export const getAllSelectedCards = async (req, res) => {
     }
 };
 
-// // Function to create a new GameId and store it in the database
-// export const createNewGame = async () => {
-//     const lastGame = await Game.findOne().sort({ createdAt: -1 }); // Get the last game
-
-//     const newGame = new Game({
-//         Bets: []  // Initialize an empty array for the bets
-//     });
-//     await newGame.save();
-
-//     return lastGame;
-// };
-
-// Function to start the timer
-// export const startTimer = async () => {
-//     let timer = await Timer.findOne({ timerId: 'game-timer' });
-
-//     if (!timer) {
-//         timer = new Timer({ timerId: 'game-timer', remainingTime: 100, isRunning: true });
-//         await timer.save();
-//     }
-
-//     timer.isRunning = true;
-//     await timer.save();
-
-//     socketClient.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
-
-//     const timerInterval = setInterval(async () => {
-//         if (timer.remainingTime > 0) {
-//             timer.remainingTime -= 1;
-//             await timer.save();
-
-//             socketClient.emit('timerUpdate', { remainingTime: timer.remainingTime, isRunning: timer.isRunning });
-//         } else {
-//             // Timer hit zero, stop the timer
-//             clearInterval(timerInterval);
-//             timer.isRunning = false;
-//             await timer.save();
-
-//             // Create a new GameId dynamically when the timer hits zero
-//             const newGameNumber = await createNewGame();
-
-//             // Emit timer stop event
-//             socketClient.emit('timerUpdate', { remainingTime: 0, isRunning: false });
-
-//             // Reset the timer and start it again
-//             resetTimer();
-//         }
-//     }, 1000);
-// };
-
 export const getTimer = async (req, res) => {
     try {
         const timer = await Timer.findOne({ timerId: 'game-timer' });
@@ -502,5 +456,209 @@ export const placeBet = async (req, res) => {
     } catch (error) {
         console.error('Error uploading game data:', error);
         return res.status(500).json({ message: 'Failed to upload game data.', error: error.message });
+    }
+};
+
+const calculateAdminResults = async (game, winningCard) => {
+    const winnerMultiplier = {
+        "N": 10,
+        "2": 20,
+        "3": 30,
+        "4": 40,
+        "5": 50,
+        "6": 60,
+        "7": 70,
+        "8": 80,
+        "9": 90,
+        "10": 100
+    };
+    const adminResults = {
+        winners: [],
+        losers: []
+    };
+    for (const bet of game.Bets) {
+        const admin = await Admin.findOne({ adminId: bet.adminID });
+        if (!admin) continue;
+        let adminResult = {
+            adminId: bet.adminID,
+            gameId: game.GameId,
+            betAmount: 0,
+            winAmount: 0,
+            winningCardAmount: 0,
+            ticketsID: bet.ticketsID,
+            status: 'lose' // Default status
+        };
+        for (const card of bet.card) {
+            adminResult.betAmount += card.Amount;
+            if (card.cardNo === winningCard.cardId) {
+                adminResult.winningCardAmount = card.Amount;
+                const multiplier = winnerMultiplier[winningCard.multiplier] || 1;
+                adminResult.winAmount = card.Amount * multiplier;
+                adminResult.ticketsID = bet.ticketsID;
+                adminResult.status = 'win'; // Update status if it's a winning card
+            }
+        }
+        if (adminResult.status === 'win') {
+            adminResults.winners.push(adminResult);
+        } else {
+            adminResults.losers.push(adminResult);
+        }
+        // console.log(adminResult);
+    }
+    return adminResults;
+};
+
+// New API endpoint for admin game results
+export const getAdminGameResults = async (req, res) => {
+    try {
+        const { gameId } = req.params;
+        const game = await Game.findOne({ GameId: gameId }).lean();
+        if (!game) {
+            return res.status(404).json({ message: 'Game not found' });
+        }
+        const selectedCard = await SelectedCard.findOne({ gameId: gameId }).lean();
+        if (!selectedCard) {
+            return res.status(404).json({ message: 'Selected card not found for this game' });
+        }
+        const adminResults = await calculateAdminResults(game, selectedCard);
+        // console.log(adminResults);
+        // Save results to MongoDB
+        const newAdminGameResult = new AdminGameResult({
+            gameId: game.GameId,
+            winningCard: {
+                cardId: selectedCard.cardId,
+                multiplier: selectedCard.multiplier,
+                amount: selectedCard.amount,
+            },
+            winners: adminResults.winners,
+            losers: adminResults.losers
+        });
+        await newAdminGameResult.save();
+        res.status(200).json({
+            success: true,
+            message: 'Admin game results calculated and saved successfully',
+            data: {
+                gameId: game.GameId,
+                winningCard: selectedCard,
+                adminResults: adminResults
+            }
+        });
+    } catch (error) {
+        console.error('Error processing and saving admin game results:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error processing and saving admin game results',
+            error: error.message
+        });
+    }
+};
+
+export const getAdminResults = async (req, res) => {
+    try {
+        const { adminId } = req.params;
+        // Verify if the admin exists
+        const admin = await Admin.findOne({ adminId });
+        if (!admin) {
+            return res.status(404).json({
+                success: false,
+                message: 'Admin not found'
+            });
+        }
+        // Find all game results where this admin is either a winner or a loser
+        const adminGameResults = await AdminGameResult.find({
+            $or: [
+                { 'winners.adminId': adminId },
+                { 'losers.adminId': adminId }
+            ]
+        }).sort({ createdAt: -1 }); // Sort by most recent games first
+        // Process the results to only include this admin's data
+        const processedResults = adminGameResults.map(gameResult => {
+            const adminData = gameResult.winners.find(winner => winner.adminId === adminId) ||
+                gameResult.losers.find(loser => loser.adminId === adminId);
+            return {
+                gameId: gameResult.gameId,
+                adminResult: {
+                    // ...adminData,
+                    adminData: adminData._doc,
+                    status: adminData ? (gameResult.winners.includes(adminData) ? 'win' : 'lose') : null
+                },
+                playedAt: gameResult.createdAt
+            };
+        });
+        res.status(200).json({
+            success: true,
+            message: 'Admin game results retrieved successfully',
+            data: {
+                adminId: adminId,
+                gameResults: processedResults
+            }
+        });
+    } catch (error) {
+        console.error('Error retrieving admin game results:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error retrieving admin game results',
+            error: error.message
+        });
+    }
+};
+
+export const claimWinnings = async (req, res) => {
+    try {
+        const { adminId, gameId } = req.body;
+        // Verify if the admin exists
+        const admin = await Admin.findOne({ adminId });
+        if (!admin) {
+            return res.status(404).json({
+                success: false,
+                message: 'Admin not found'
+            });
+        }
+        // Find the specific game result
+        const gameResult = await AdminGameResult.findOne({ gameId });
+        if (!gameResult) {
+            return res.status(404).json({
+                success: false,
+                message: 'Game result not found'
+            });
+        }
+        // Check if the admin is a winner in this game
+        const winner = gameResult.winners.find(w => w.adminId === adminId);
+        if (!winner) {
+            return res.status(400).json({
+                success: false,
+                message: 'Admin is not a winner in this game'
+            });
+        }
+        // Check if the admin has already claimed this game
+        if (winner.status === 'claimed') {
+            return res.status(400).json({
+                success: false,
+                message: 'You have already claimed this game'
+            });
+        }
+        // Update admin's wallet
+        admin.wallet += winner.winAmount;
+        await admin.save();
+        // Mark the game as claimed for this admin
+        winner.status = 'claimed';
+        await gameResult.save();
+        res.status(200).json({
+            success: true,
+            message: 'Winnings claimed successfully',
+            data: {
+                adminId: admin.adminId,
+                gameId: gameResult.gameId,
+                claimedAmount: winner.winAmount,
+                newWalletBalance: admin.wallet
+            }
+        });
+    } catch (error) {
+        console.error('Error claiming winnings:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error claiming winnings',
+            error: error.message
+        });
     }
 };

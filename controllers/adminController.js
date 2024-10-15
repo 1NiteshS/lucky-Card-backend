@@ -250,3 +250,162 @@ export const getCurrentGame = async (req, res) => {
     });
   }
 };
+
+export const calculateAndStoreAdminWinnings = async (gameId) => {
+  try {
+    const game = await Game.findOne({ GameId: gameId });
+    const selectedCard = await SelectedCard.findOne({ gameId });
+    if (!game || !selectedCard) {
+      console.error('Game or SelectedCard not found');
+      return;
+    }
+    const winningCardId = selectedCard.cardId;
+    const winningMultiplier = parseInt(selectedCard.multiplier);
+    for (const bet of game.Bets) {
+      const adminId = bet.adminID;
+      let winningAmount = 0;
+      for (const card of bet.card) {
+        if (card.cardNo === winningCardId) {
+          winningAmount += card.Amount * winningMultiplier;
+        }
+      }
+      if (winningAmount > 0) {
+        const adminWinning = new AdminWinnings({
+          adminId,
+          gameId,
+          winningAmount,
+        });
+        await adminWinning.save();
+        // Update admin's wallet
+        await Admin.findOneAndUpdate(
+          { adminId },
+          { $inc: { wallet: winningAmount } }
+        );
+      }
+    }
+  } catch (error) {
+    console.error('Error calculating and storing admin winnings:', error);
+  }
+};
+
+export const addAdminWinning = async (req, res) => {
+  try {
+    const { adminId, gameId, winningAmount } = req.body;
+    // Validate input
+    if (!adminId || !gameId || !winningAmount) {
+      return res.status(400).json({
+        success: false,
+        error: 'adminId, gameId, and winningAmount are required'
+      });
+    }
+    // Check if the admin exists
+    const admin = await Admin.findOne({ adminId });
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        error: 'Admin not found'
+      });
+    }
+    // Create new AdminWinnings document
+    const newWinning = new AdminWinnings({
+      adminId,
+      gameId,
+      winningAmount
+    });
+    // Save the new winning record
+    await newWinning.save();
+    // Update admin's wallet
+    await Admin.findOneAndUpdate(
+      { adminId },
+      { $inc: { wallet: winningAmount } }
+    );
+    res.status(201).json({
+      success: true,
+      message: 'Admin winning added successfully',
+      data: newWinning
+    });
+  } catch (error) {
+    console.error('Error adding admin winning:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+};
+
+export const postAllAdminWinnings = async (req, res) => {
+  try {
+    const { adminId } = req.body;
+    // Validate input
+    if (!adminId) {
+      return res.status(400).json({
+        success: false,
+        error: 'adminId is required'
+      });
+    }
+    // Check if the admin exists
+    const admin = await Admin.findOne({ adminId });
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        error: 'Admin not found'
+      });
+    }
+    // Find all games where this admin has placed bets
+    const games = await Game.find({ 'Bets.adminID': adminId });
+    //console.log("games", games)
+    let totalWinnings = 0;
+    const winningRecords = [];
+    for (const game of games) {
+      const selectedCard = await SelectedCard.findOne({ gameId: game.GameId });
+      //console.log('selected card', selectedCard);
+      if (!selectedCard) continue; // Skip if no winning card was selected for this game
+      const winningCardId = selectedCard.cardId;
+      //console.log('winnig card', winningCardId);
+      const winningMultiplier = parseInt(selectedCard.multiplier);
+      //console.log('winning all', winningMultiplier);
+      let gameWinningAmount = 0;
+      // Find this admin's bet in the game
+      const adminBet = game.Bets.find(bet => bet.adminID === adminId);
+      //console.log('admin bet', adminBet);
+      if (adminBet) {
+        console.log(adminBet);
+        for (const card of adminBet.card) {
+          if (card.cardNo === winningCardId) {
+            gameWinningAmount += card.Amount * winningMultiplier;
+            console.log('game winner amt', gameWinningAmount);
+          }
+        }
+      }
+      if (gameWinningAmount > 0) {
+        const winningRecord = new AdminWinnings({
+          adminId,
+          gameId: game.GameId,
+          winningAmount: gameWinningAmount,
+        });
+        await winningRecord.save();
+        winningRecords.push(winningRecord);
+        totalWinnings += gameWinningAmount;
+      }
+    }
+    // Update admin's wallet with total winnings
+    await Admin.findOneAndUpdate(
+      { adminId },
+      { $inc: { wallet: totalWinnings } }
+    );
+    res.status(201).json({
+      success: true,
+      message: 'Admin winnings posted successfully',
+      data: {
+        totalWinnings,
+        winningRecords
+      }
+    });
+  } catch (error) {
+    console.error('Error posting admin winnings:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+};
