@@ -36,6 +36,7 @@ export const getAllAdmins = async (req, res) => {
     const admins = await Admin.find({}, 'name email createdAt password wallet');
     
     const adminData = admins.map(admin => ({
+      adminId: admin.adminId,
       name: admin.name,
       email: admin.email,
       creationDate: admin.createdAt,

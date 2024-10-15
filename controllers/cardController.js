@@ -4,6 +4,8 @@ import Game from '../models/gameModel.js';
 import Admin from '../models/Admin.js';
 import AdminGameResult from '../models/AdminGameResult.js';
 import { calculateAndStoreAdminWinnings } from './adminController.js';
+import AdminChoice from '../models/AdminChoice.js';
+
 // import { socketClient } from '../socket/sockectServer.js';
 
 const cardNumbers = {
@@ -111,37 +113,112 @@ export const getCurrentGame = async (req, res) => {
 };
 
 // This function will calculate amounts based on remaining time
+// export const calculateAmounts = async () => {
+//     try {
+//         // Fetch the latest game from the database
+//         const latestGame = await Game.findOne().sort({ createdAt: -1 }).lean(); // Adjust sort based on your schema
+//         if (!latestGame) {
+//             return { message: 'No games found' };
+//         }
+
+//         // Process the bets and calculate valid amounts
+//         const validAmounts = processGameBets(latestGame.Bets);
+
+//         // Select a random winning card from the valid amounts
+//         const WinningCard = selectRandomAmount(validAmounts);
+
+//         // Save the selected winning card for the current game
+//         await saveSelectedCard(WinningCard, latestGame.GameId);
+
+//         const adminResults = await calculateAdminResults(latestGame, WinningCard);
+
+//         await calculateAndStoreAdminWinnings(latestGame.GameId);
+
+//         // Respond with the winning card information
+//         return {
+//             message: 'Amounts calculated successfully',
+//             WinningCard,  // Return the winning card
+//             adminResults
+//         };
+
+//     } catch (err) {
+//         console.error(`Error during calculation: ${err}`);
+//         return { message: 'Error calculating amounts', error: err.message };
+//     }
+// };
+
 export const calculateAmounts = async () => {
     try {
-        // Fetch the latest game from the database
-        const latestGame = await Game.findOne().sort({ createdAt: -1 }).lean(); // Adjust sort based on your schema
+        const latestGame = await Game.findOne().sort({ createdAt: -1 }).lean();
         if (!latestGame) {
-            return { message: 'No games found' };
+            return res.status(404).json({ message: 'No games found' });
         }
 
-        // Process the bets and calculate valid amounts
-        const validAmounts = processGameBets(latestGame.Bets);
+        const choiceDoc = await AdminChoice.findOne();
+        const chosenAlgorithm = choiceDoc ? choiceDoc.algorithm : 'default';
+        let validAmounts;
 
-        // Select a random winning card from the valid amounts
+        switch (chosenAlgorithm) {
+            case 'minAmount':
+                validAmounts = await processGameBetsWithMinAmount(latestGame.Bets);
+                break;
+            case 'zeroAndRandom':
+                validAmounts = await processGameBetsWithZeroRandomAndMin(latestGame.Bets);
+                break;
+            default:
+                validAmounts = processGameBets(latestGame.Bets);
+        }
+
         const WinningCard = selectRandomAmount(validAmounts);
-
-        // Save the selected winning card for the current game
         await saveSelectedCard(WinningCard, latestGame.GameId);
-
         const adminResults = await calculateAdminResults(latestGame, WinningCard);
-
         await calculateAndStoreAdminWinnings(latestGame.GameId);
 
-        // Respond with the winning card information
         return {
             message: 'Amounts calculated successfully',
-            WinningCard,  // Return the winning card
+            WinningCard,
             adminResults
         };
 
     } catch (err) {
         console.error(`Error during calculation: ${err}`);
         return { message: 'Error calculating amounts', error: err.message };
+    }
+};
+
+export const chooseAlgorithm = async (req, res) => {
+    try {
+        const { algorithm } = req.body;
+        if (!['default', 'minAmount', 'zeroAndRandom'].includes(algorithm)) {
+            return res.status(400).json({ message: 'Invalid algorithm choice' });
+        }
+
+        // Try to find an existing AdminChoice document
+        let adminChoice = await AdminChoice.findOne();
+
+        if (!adminChoice) {
+            // If no document exists, create a new one
+            adminChoice = new AdminChoice({ algorithm });
+            await adminChoice.save();
+            return res.status(201).json({ message: 'Algorithm choice created successfully' });
+        } else {
+            // If a document exists, update it
+            adminChoice.algorithm = algorithm;
+            await adminChoice.save();
+            return res.json({ message: 'Algorithm choice updated successfully' });
+        }
+    } catch (error) {
+        console.error('Error in chooseAlgorithm:', error);
+        return res.status(500).json({ message: 'Error updating algorithm choice', error: error.message });
+    }
+};
+
+export const getCurrentAlgorithm = async (req, res) => {
+    try {
+        const choice = await AdminChoice.findOne();
+        res.json({ currentAlgorithm: choice ? choice.algorithm : 'default' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching current algorithm', error: error.message });
     }
 };
 
@@ -251,6 +328,100 @@ const processGameBets = (bets) => {
     }
     
     return multipliedArray;
+};
+
+const processGameBetsWithMinAmount = async (databaseConnection) => {
+    // 1. Get data from database
+    const bets = await databaseConnection.getBets();
+
+    if (!bets || bets.length === 0) {
+        console.log("No bets found in database. Skipping bet processing...");
+        return {};
+    }
+
+    // 2. Find card with minimum amount
+    let minAmountCard = null;
+    let totalAmount = 0;
+
+    for (const bet of bets) {
+        for (const card of bet.card) {
+            totalAmount += card.Amount;
+            if (!minAmountCard || card.Amount < minAmountCard.Amount) {
+                minAmountCard = card;
+            }
+        }
+    }
+
+    if (!minAmountCard) {
+        console.log("No valid cards found. Skipping bet processing...");
+        return {};
+    }
+
+    // 3. Calculate 85% of total amount
+    const percAmount = totalAmount * 0.85;
+
+    // 4 & 5. Multiply min amount card and compare with 85% total
+    const multipliedArray = {
+        "N": 0, "2": 0, "3": 0, "4": 0, "5": 0,
+        "6": 0, "7": 0, "8": 0, "9": 0, "10": 0
+    };
+
+    for (let i = 1; i <= 10; i++) {
+        const multipliedAmount = minAmountCard.Amount * (i * 10);
+        if (multipliedAmount < percAmount) {
+            multipliedArray[i === 10 ? "10" : i.toString()] = multipliedAmount;
+        } else {
+            break; // Stop if we exceed the 85% threshold
+        }
+    }
+
+    return {
+        selectedCard: minAmountCard.cardNo,
+        multipliedResults: multipliedArray
+    };
+};
+
+const processGameBetsWithZeroRandomAndMin = async (databaseConnection) => {
+    // 1. Get data from database
+    const bets = await databaseConnection.getBets();
+
+    if (!bets || bets.length === 0) {
+        console.log("No bets found in database. Skipping bet processing...");
+        return {};
+    }
+
+    // 2. Check for cards with zero amount
+    const zeroAmountCards = [];
+    for (const bet of bets) {
+        for (const card of bet.card) {
+            if (card.Amount === 0) {
+                zeroAmountCards.push(card.cardNo);
+            }
+        }
+    }
+
+    // 3. If zero amount cards found, return them
+    if (zeroAmountCards.length > 0) {
+        return {
+            type: "zeroAmount",
+            cards: zeroAmountCards
+        };
+    }
+
+    // 4. If no zero amount cards, proceed with random multiplier
+    const multipliers = ["N", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
+    const randomMultiplier = multipliers[Math.floor(Math.random() * multipliers.length)];
+
+    // 5. Call processGameBetsWithMinAmount
+    const minAmountResult = await processGameBetsWithMinAmount(databaseConnection);
+
+    // 6. Return result with random multiplier
+    return {
+        type: "randomMultiplier",
+        multiplier: randomMultiplier,
+        selectedCard: minAmountResult.selectedCard,
+        amount: minAmountResult.multipliedResults[randomMultiplier]
+    };
 };
 
 // Function to find random non-zero value and its index
