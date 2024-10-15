@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { sendOTP } from '../utils/emailService.js';
 import Game from '../models/gameModel.js';
+import SelectedCard from '../models/selectedCardModel.js'
 
 const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -225,42 +226,42 @@ export const getCurrentGame = async (req, res) => {
   }
 };
 
-export const calculateAndStoreAdminWinnings = async (gameId) => {
-  try {
-    const game = await Game.findOne({ GameId: gameId });
-    const selectedCard = await SelectedCard.findOne({ gameId });
-    if (!game || !selectedCard) {
-      console.error('Game or SelectedCard not found');
-      return;
-    }
-    const winningCardId = selectedCard.cardId;
-    const winningMultiplier = parseInt(selectedCard.multiplier);
-    for (const bet of game.Bets) {
-      const adminId = bet.adminID;
-      let winningAmount = 0;
-      for (const card of bet.card) {
-        if (card.cardNo === winningCardId) {
-          winningAmount += card.Amount * winningMultiplier;
-        }
-      }
-      if (winningAmount > 0) {
-        const adminWinning = new AdminWinnings({
-          adminId,
-          gameId,
-          winningAmount,
-        });
-        await adminWinning.save();
-        // Update admin's wallet
-        await Admin.findOneAndUpdate(
-          { adminId },
-          { $inc: { wallet: winningAmount } }
-        );
-      }
-    }
-  } catch (error) {
-    console.error('Error calculating and storing admin winnings:', error);
-  }
-};
+// export const calculateAndStoreAdminWinnings = async (gameId) => {
+//   try {
+//     const game = await Game.findOne({ GameId: gameId });
+//     const selectedCard = await SelectedCard.findOne({ gameId });
+//     if (!game || !selectedCard) {
+//       console.error('Game or SelectedCard not found');
+//       return;
+//     }
+//     const winningCardId = selectedCard.cardId;
+//     const winningMultiplier = parseInt(selectedCard.multiplier);
+//     for (const bet of game.Bets) {
+//       const adminId = bet.adminID;
+//       let winningAmount = 0;
+//       for (const card of bet.card) {
+//         if (card.cardNo === winningCardId) {
+//           winningAmount += card.Amount * winningMultiplier;
+//         }
+//       }
+//       if (winningAmount > 0) {
+//         const adminWinning = new AdminWinnings({
+//           adminId,
+//           gameId,
+//           winningAmount,
+//         });
+//         await adminWinning.save();
+//         // Update admin's wallet
+//         await Admin.findOneAndUpdate(
+//           { adminId },
+//           { $inc: { wallet: winningAmount } }
+//         );
+//       }
+//     }
+//   } catch (error) {
+//     console.error('Error calculating and storing admin winnings:', error);
+//   }
+// };
 
 export const addAdminWinning = async (req, res) => {
   try {

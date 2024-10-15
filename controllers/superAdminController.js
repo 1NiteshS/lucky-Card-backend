@@ -34,6 +34,9 @@ export const login = async (req, res) => {
 export const getAllAdmins = async (req, res) => {
   try {
     const admins = await Admin.find({}, 'name email createdAt password wallet');
+
+    console.log(admins.adminId);
+    
     
     const adminData = admins.map(admin => ({
       adminId: admin.adminId,
@@ -130,5 +133,49 @@ export const getGameHistory = async (req, res) => {
           success: false,
           error: "Internal server error"
       });
+  }
+};
+
+export const blockAdmin = async (req, res) => {
+  try {
+    const { adminId } = req.body;
+    const admin = await Admin.findOne({ adminId: adminId });
+    if (!admin) {
+      return res.status(404).json({ error: 'Admin not found' });
+    }
+    admin.isBlocked = true;
+    await admin.save();
+    res.status(200).json({ message: 'Admin blocked successfully' });
+  } catch (error) {
+    console.error('Error blocking admin:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+export const unblockAdmin = async (req, res) => {
+  try {
+    const { adminId } = req.body;
+    const admin = await Admin.findOne({ adminId: adminId });
+    if (!admin) {
+      return res.status(404).json({ error: 'Admin not found' });
+    }
+    admin.isBlocked = false;
+    await admin.save();
+    res.status(200).json({ message: 'Admin unblocked successfully' });
+  } catch (error) {
+    console.error('Error unblocking admin:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+export const deleteAdmin = async (req, res) => {
+  try {
+    const { adminId } = req.body;
+    const result = await Admin.findOneAndDelete({ adminId: adminId });
+    if (!result) {
+      return res.status(404).json({ error: 'Admin not found' });
+    }
+    res.status(200).json({ message: 'Admin deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting admin:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 };

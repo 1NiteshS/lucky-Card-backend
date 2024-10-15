@@ -3,7 +3,7 @@ import Timer from '../models/timerModel.js';
 import Game from '../models/gameModel.js';
 import Admin from '../models/Admin.js';
 import AdminGameResult from '../models/AdminGameResult.js';
-import { calculateAndStoreAdminWinnings } from './adminController.js';
+// import { calculateAndStoreAdminWinnings } from './adminController.js';
 import AdminChoice from '../models/AdminChoice.js';
 
 // import { socketClient } from '../socket/sockectServer.js';
@@ -172,7 +172,7 @@ export const calculateAmounts = async () => {
         const WinningCard = selectRandomAmount(validAmounts);
         await saveSelectedCard(WinningCard, latestGame.GameId);
         const adminResults = await calculateAdminResults(latestGame, WinningCard);
-        await calculateAndStoreAdminWinnings(latestGame.GameId);
+        // await calculateAndStoreAdminWinnings(latestGame.GameId);
 
         return {
             message: 'Amounts calculated successfully',
@@ -330,9 +330,7 @@ const processGameBets = (bets) => {
     return multipliedArray;
 };
 
-const processGameBetsWithMinAmount = async (databaseConnection) => {
-    // 1. Get data from database
-    const bets = await databaseConnection.getBets();
+const processGameBetsWithMinAmount = async (bets) => {
 
     if (!bets || bets.length === 0) {
         console.log("No bets found in database. Skipping bet processing...");
@@ -381,9 +379,7 @@ const processGameBetsWithMinAmount = async (databaseConnection) => {
     };
 };
 
-const processGameBetsWithZeroRandomAndMin = async (databaseConnection) => {
-    // 1. Get data from database
-    const bets = await databaseConnection.getBets();
+const processGameBetsWithZeroRandomAndMin = async (bets) => {
 
     if (!bets || bets.length === 0) {
         console.log("No bets found in database. Skipping bet processing...");

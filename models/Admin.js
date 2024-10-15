@@ -11,6 +11,7 @@ const AdminSchema = new mongoose.Schema(
     otp: { type: String },
     otpExpiry: { type: Date },
     wallet: { type: Number, default: 0 },
+    isBlocked: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
