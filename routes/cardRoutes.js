@@ -28,7 +28,9 @@ router.get('/current-game', getCurrentGame);
 router.get('/selected-cards', getAllSelectedCards);
 
 router.get('/admin-game-results/:gameId', getAdminGameResults);
+
 router.get('/admin-results/:adminId', getAdminResults);
+
 router.post('/claim', claimWinnings);
 
 
