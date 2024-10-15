@@ -84,31 +84,44 @@ export const postCardNumber = async (req, res) => {
 };
 
 // Function to get the current gameID
-export const getCurrentGame = async (req, res) => {
+export const getCurrentGame = async () => {
     try {
         // Find the most recent game
         const currentGame = await Game.findOne().sort({ createdAt: -1 });
         console.log(currentGame);
 
         if (!currentGame) {
-            return res.status(404).json({ message: 'No active game found' });
+            return { message: 'No active game found' };
+            // return res.status(404).json({ message: 'No active game found' });
         }
 
         // Return the game ID and any other relevant information
-        res.status(200).json({
-        success: true,
-        data: {
-            gameId: currentGame.GameId,
-            createdAt: currentGame.createdAt
-        }
-        });
+        // res.status(200).json({
+        // success: true,
+        // data: {
+        //     gameId: currentGame.GameId,
+        //     createdAt: currentGame.createdAt
+        // }
+        // });
+        return{
+            success: true,
+            data: {
+                gameId: currentGame.GameId,
+                // createdAt: currentGame.createdAt
+            }
+        };
     } catch (error) {
         console.error('Error fetching current game:', error);
-        res.status(500).json({
-        success: false,
-        message: 'Error fetching current game',
-        error: error.message
-     });
+        return{
+            success: false,
+            message: 'Error fetching current game',
+            error: error.message
+        };
+    //     res.status(500).json({
+    //         success: false,
+    //         message: 'Error fetching current game',
+    //         error: error.message
+    //     });
     }
 };
 
