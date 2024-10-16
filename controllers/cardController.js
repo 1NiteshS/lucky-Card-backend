@@ -434,32 +434,85 @@ const processGameBetsWithZeroRandomAndMin = async (bets) => {
 };
 
 // Function to find random non-zero value and its index
-function selectRandomAmount(validAmounts) {
+// function selectRandomAmount(validAmounts) {
 
-    if (Object.keys(validAmounts).length === 0) {
-        console.log("Valid amounts is empty.");
-        return { key: "0", index: 0, value: 0 }; // Return the default structure
-    }
+//     console.log(validAmounts);
     
+//     if (Object.keys(validAmounts).length === 0) {
+//         console.log("Valid amounts is empty.");
+//         return { key: "0", index: 0, value: 0 }; // Return the default structure
+//     }
+    
+//     let nonZeroEntries = [];
+
+//     // Iterate through validAmounts to find non-zero values
+//     for (let key in validAmounts) {
+//         validAmounts[key].forEach((value, index) => {
+//             if (value !== 0) {
+//                 nonZeroEntries.push({ key, index, value });
+//             }
+//         });
+//     }
+
+//     // Check if we have any non-zero entries
+//     if (nonZeroEntries.length === 0) {
+//       return null; // Return null if no non-zero values
+//     }
+
+//     // Pick a random entry from the non-zero values
+//     const randomEntry = nonZeroEntries[Math.floor(Math.random() * nonZeroEntries.length)];
+
+//     return randomEntry;
+// }
+
+
+function selectRandomAmount(validAmounts) {
+    console.log("Valid Amounts:", JSON.stringify(validAmounts, null, 2));
+
+    if (typeof validAmounts !== 'object' || validAmounts === null) {
+        console.log("Valid amounts is not an object.");
+        return { key: "0", index: 0, value: 0 };
+    }
+
     let nonZeroEntries = [];
 
-    // Iterate through validAmounts to find non-zero values
-    for (let key in validAmounts) {
-        validAmounts[key].forEach((value, index) => {
-            if (value !== 0) {
-                nonZeroEntries.push({ key, index, value });
+    // Check the structure of validAmounts and process accordingly
+    if (validAmounts.type === 'randomMultiplier') {
+        // Handle the structure returned by processGameBetsWithZeroRandomAndMin
+        if (validAmounts.amount !== 0) {
+            nonZeroEntries.push({
+                key: validAmounts.multiplier,
+                index: parseInt(validAmounts.selectedCard.slice(-3)) - 1, // Convert A001 to 0, A002 to 1, etc.
+                value: validAmounts.amount
+            });
+        }
+    } else {
+        // Handle the original expected structure
+        for (let key in validAmounts) {
+            if (Array.isArray(validAmounts[key])) {
+                validAmounts[key].forEach((value, index) => {
+                    if (value !== 0) {
+                        nonZeroEntries.push({ key, index, value });
+                    }
+                });
+            } else if (typeof validAmounts[key] === 'number' && validAmounts[key] !== 0) {
+                nonZeroEntries.push({ key, index: 0, value: validAmounts[key] });
             }
-        });
+        }
     }
+
+    console.log("Non-zero entries:", nonZeroEntries);
 
     // Check if we have any non-zero entries
     if (nonZeroEntries.length === 0) {
-      return null; // Return null if no non-zero values
+        console.log("No non-zero entries found.");
+        return { key: "0", index: 0, value: 0 };
     }
 
     // Pick a random entry from the non-zero values
     const randomEntry = nonZeroEntries[Math.floor(Math.random() * nonZeroEntries.length)];
 
+    console.log("Selected random entry:", randomEntry);
     return randomEntry;
 }
 
