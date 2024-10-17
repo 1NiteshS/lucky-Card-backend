@@ -22,6 +22,6 @@ router.post('/delete-admin', authSuperAdmin, deleteAdmin);
 
 router.get('/getPercentage', getPercentage);
 router.put('/updatePercentage', updatePercentage);
-router.get('/winnings/:adminId', getAdminWinnings);
+// router.get('/winnings/:adminId', getAdminWinnings);
 
 export default router;

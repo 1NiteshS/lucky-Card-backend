@@ -14,7 +14,6 @@ async function getPercentageFromDatabase() {
     return betPercentage ? betPercentage.percentage : 85; // Default to 85 if not set
 }
 
-// import { socketClient } from '../socket/sockectServer.js';
 const cardNumbers = {
     'A001': 'Jheart',
     'A002': 'Jspade',
@@ -56,31 +55,31 @@ try {
 export const postCardNumber = async (req, res) => {
     try {
         const { cardNo } = req.body;
-  
+
         if (cardNo === undefined || cardNo === null) {
             return res.status(400).json({
-                success: false,
-                message: 'Card number is required'
+            success: false,
+            message: 'Card number is required'
             });
         }
-  
+    
         const cardName = cardNumbers[cardNo];
-  
+    
         if (!cardName) {
             return res.status(400).json({
-                success: false,
-                message: 'Invalid card number'
+            success: false,
+            message: 'Invalid card number'
             });
         }
-  
+    
         res.status(200).json({
             success: true,
             data: {
-                cardNo: cardNo,
-                cardName: cardName
+            cardNo: cardNo,
+            cardName: cardName
             }
         });
-    } catch (error) {
+        } catch (error) {
         console.error('Error processing card number:', error);
         res.status(500).json({
             success: false,
@@ -99,12 +98,13 @@ export const getCurrentGame = async () => {
 
         if (!currentGame) {
             return { message: 'No active game found' };
+            // return res.status(404).json({ message: 'No active game found' });
         }
-
         return{
             success: true,
             data: {
                 gameId: currentGame.GameId,
+                // createdAt: currentGame.createdAt
             }
         };
     } catch (error) {
@@ -131,13 +131,13 @@ export const calculateAmounts = async () => {
 
         switch (chosenAlgorithm) {
             case 'minAmount':
-                validAmounts =  processGameBetsWithMinAmount(latestGame.Bets);
+                validAmounts = await processGameBetsWithMinAmount(latestGame.Bets);
                 break;
             case 'zeroAndRandom':
-                validAmounts =  processGameBetsWithZeroRandomAndMin(latestGame.Bets);
+                validAmounts = await processGameBetsWithZeroRandomAndMin(latestGame.Bets);
                 break;
             default:
-                validAmounts = processGameBets(latestGame.Bets);
+                validAmounts = await processGameBets(latestGame.Bets);
         }
 
         const WinningCard = selectRandomAmount(validAmounts);
@@ -251,7 +251,7 @@ const processGameBets = (bets) => {
     }
 
     let multipliedArray = {
-        "N":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "1":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         "2":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         "3":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         "4":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -264,12 +264,10 @@ const processGameBets = (bets) => {
     }  
 
     const percAmount = totalAmount * 0.85;
-    // const percentage = getPercentageFromDatabase();
-    // const percAmount = totalAmount * (percentage / 100);
 
     for(let i = 0; i < amounts.length; i++) {
         if(amounts[i]*10 < percAmount) {
-            multipliedArray["N"][i] = amounts[i]*10;
+            multipliedArray["1"][i] = amounts[i]*10;
         }
         if(amounts[i]*20 < percAmount) {
             multipliedArray["2"][i] = amounts[i]*20;
@@ -303,8 +301,7 @@ const processGameBets = (bets) => {
     return multipliedArray;
 };
 
-const processGameBetsWithMinAmount = (bets) => {
-
+const processGameBetsWithMinAmount = async (bets) => {
     if (!bets || bets.length === 0) {
         console.log("No bets found in database. Skipping bet processing...");
         return {};
@@ -330,10 +327,10 @@ const processGameBetsWithMinAmount = (bets) => {
 
     // 3. Calculate 85% of total amount
     const percAmount = totalAmount * 0.85;
-
+    
     // 4 & 5. Multiply min amount card and compare with 85% total
     const multipliedArray = {
-        "N": 0, "2": 0, "3": 0, "4": 0, "5": 0,
+        "1": 0, "2": 0, "3": 0, "4": 0, "5": 0,
         "6": 0, "7": 0, "8": 0, "9": 0, "10": 0
     };
 
@@ -346,14 +343,14 @@ const processGameBetsWithMinAmount = (bets) => {
         }
     }
 
-    return {
-        selectedCard: minAmountCard.cardNo,
-        multipliedResults: multipliedArray
-    };
+    for (let index = 0; index < multipliedArray.length; index++) {
+        console.log(multipliedArray[index]);  
+    }
+
+    return multipliedArray;
 };
 
-const processGameBetsWithZeroRandomAndMin = (bets) => {
-
+const processGameBetsWithZeroRandomAndMin = async (bets) => {
     if (!bets || bets.length === 0) {
         console.log("No bets found in database. Skipping bet processing...");
         return {};
@@ -361,52 +358,7 @@ const processGameBetsWithZeroRandomAndMin = (bets) => {
 
     // 2. Check for cards with zero amount
     const zeroAmountCards = [];
-    const amounts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-
-    for(const bet of bets) {
-        // Access cards in the bet            
-            bet.card.forEach(card => {
-                if(card.cardNo == "A001") {
-                    totalAmount += card.Amount;
-                    amounts[0] += card.Amount;
-                } else if(card.cardNo == "A002") {
-                    totalAmount += card.Amount;
-                    amounts[1] += card.Amount;
-                } else if(card.cardNo == "A003") {
-                    totalAmount += card.Amount;
-                    amounts[2] += card.Amount;
-                } else if(card.cardNo == "A004") {
-                    totalAmount += card.Amount;
-                    amounts[3] += card.Amount;
-                } else if(card.cardNo == "A005") {
-                    totalAmount += card.Amount;
-                    amounts[4] += card.Amount;
-                } else if(card.cardNo == "A006") {
-                    totalAmount += card.Amount;
-                    amounts[5] += card.Amount;
-                } else if(card.cardNo == "A007") {
-                    totalAmount += card.Amount;
-                    amounts[6] += card.Amount;
-                } else if(card.cardNo == "A008") {
-                    totalAmount += card.Amount;
-                    amounts[7] += card.Amount;
-                } else if(card.cardNo == "A009") {
-                    totalAmount += card.Amount;
-                    amounts[8] += card.Amount;
-                } else if(card.cardNo == "A010") {
-                    totalAmount += card.Amount;
-                    amounts[9] += card.Amount;
-                } else if(card.cardNo == "A011") {
-                    totalAmount += card.Amount;
-                    amounts[10] += card.Amount;
-                } else if(card.cardNo == "A012") {
-                    totalAmount += card.Amount;
-                    amounts[11] += card.Amount;
-                }
-            });
-    }
-
-    for (const bet of amounts) {
+    for (const bet of bets) {
         for (const card of bet.card) {
             if (card.Amount === 0) {
                 zeroAmountCards.push(card.cardNo);
@@ -423,36 +375,40 @@ const processGameBetsWithZeroRandomAndMin = (bets) => {
     }
 
     // 4. If no zero amount cards, proceed with random multiplier
-    const multipliers = ["N", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
+    const multipliers = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
     const randomMultiplier = multipliers[Math.floor(Math.random() * multipliers.length)];
 
     // 5. Call processGameBetsWithMinAmount
-    const minAmountResult = processGameBetsWithMinAmount(bets);
+    const minAmountResult = await processGameBetsWithMinAmount(bets);
 
-    // 6. Return result with random multiplier
-    return {
-        type: "randomMultiplier",
-        multiplier: randomMultiplier,
-        selectedCard: minAmountResult.selectedCard,
-        amount: minAmountResult.multipliedResults[randomMultiplier]
-    };
+    const newObject = {};
+
+    for (const [key, value] of Object.entries(minAmountResult)) {
+        newObject[key] = value; // Store each value in the new object
+    }
+    
+    // Log the newObject
+    console.log("newObject", newObject);
+    
+    // Return result directly without nesting
+    return newObject;
 };
 
-// Function to find random non-zero value and its index
 function selectRandomAmount(validAmounts) {
-    console.log("Valid Amounts:", JSON.stringify(validAmounts, null, 2));
-
-    if (typeof validAmounts !== 'object' || validAmounts === null) {
-        console.log("Valid amounts is not an object.");
-        return { key: "0", index: 0, value: 0 };
-    }
+    console.log("Valid Amounts:", JSON.stringify(validAmounts));
+    console.log("Undefined", validAmounts);
+    
 
     let nonZeroEntries = [];
 
     // Check the structure of validAmounts and process accordingly
     if (validAmounts.type === 'randomMultiplier') {
+        console.log("A");
+        
         // Handle the structure returned by processGameBetsWithZeroRandomAndMin
         if (validAmounts.amount !== 0) {
+            console.log("B");
+            
             nonZeroEntries.push({
                 key: validAmounts.multiplier,
                 index: parseInt(validAmounts.selectedCard.slice(-3)) - 1, // Convert A001 to 0, A002 to 1, etc.
@@ -460,15 +416,21 @@ function selectRandomAmount(validAmounts) {
             });
         }
     } else {
+        console.log("C");
+        
         // Handle the original expected structure
         for (let key in validAmounts) {
             if (Array.isArray(validAmounts[key])) {
+                console.log("D");
+                
                 validAmounts[key].forEach((value, index) => {
                     if (value !== 0) {
                         nonZeroEntries.push({ key, index, value });
                     }
                 });
             } else if (typeof validAmounts[key] === 'number' && validAmounts[key] !== 0) {
+                console.log("E");
+                
                 nonZeroEntries.push({ key, index: 0, value: validAmounts[key] });
             }
         }
@@ -478,6 +440,8 @@ function selectRandomAmount(validAmounts) {
 
     // Check if we have any non-zero entries
     if (nonZeroEntries.length === 0) {
+        console.log("F");
+        
         console.log("No non-zero entries found.");
         return { key: "0", index: 0, value: 0 };
     }
@@ -901,24 +865,17 @@ export const processAllSelectedCards = async (req, res) => {
             }
             // Calculate and store admin winnings
             await calculateAndStoreAdminWinnings(gameId);
-            // Store recent winning card
+            // Store recent winning card and keep only latest 10
             const winningCard = processedCards[Math.floor(Math.random() * processedCards.length)];
-            const recentWinningCard = new RecentWinningCard({
-                gameId: gameId,
-                cardId: winningCard.cardId,
-                amount: winningCard.amount,
-                multiplier: parseFloat(winningCard.multiplier), // Convert to Number if it's a String
-            });
-            await recentWinningCard.save();
+            await saveLatest10WinningCards(gameId, winningCard);
+            // Fetch the saved winning card to return in the response
+            const recentWinningCard = await RecentWinningCard.findOne({ gameId }).sort({ createdAt: -1 });
             return {
                 gameId,
-                // processedCards,
                 winningCard: recentWinningCard
             };
         }));
-        // Keep only the latest 10 winning cards
-        await keepLatest10WinningCards();
-        // Send the response with all processed games and cards
+        // Send the response with all processed games and winning cards
         res.status(200).json({
             success: true,
             message: "All selected cards processed and saved successfully. Only the latest 10 winning cards are kept.",
@@ -933,22 +890,29 @@ export const processAllSelectedCards = async (req, res) => {
         });
     }
 };
-// Function to keep only the latest 10 winning cards
-async function keepLatest10WinningCards() {
+
+// Function to save the latest winning card and keep only the latest 10
+async function saveLatest10WinningCards(gameId, winningCard) {
     try {
+        const newWinningCard = new RecentWinningCard({
+            gameId: gameId,
+            cardId: winningCard.cardId,
+            amount: winningCard.amount,
+            multiplier: parseFloat(winningCard.multiplier), // Convert to Number if it's a String
+        });
+        await newWinningCard.save();
         // Get total count of documents
         const totalCount = await RecentWinningCard.countDocuments();
-        // If there are more than 10 documents, remove the oldest ones
+        // If there are more than 10 documents, remove the oldest one
         if (totalCount > 10) {
-            const numberOfDocumentsToRemove = totalCount - 10;
-            const oldestDocuments = await RecentWinningCard.find()
-                .sort({ createdAt: 1 })
-                .limit(numberOfDocumentsToRemove);
-            const oldestIds = oldestDocuments.map(doc => doc._id);
-            await RecentWinningCard.deleteMany({ _id: { $in: oldestIds } });
+            const oldestDocument = await RecentWinningCard.findOne().sort({ createdAt: 1 });
+            if (oldestDocument) {
+                await RecentWinningCard.deleteOne({ _id: oldestDocument._id });
+            }
         }
     } catch (error) {
-        console.error('Error in keepLatest10WinningCards:', error);
+        console.error('Error in saveLatest10WinningCards:', error);
         throw error;
     }
 }
+
