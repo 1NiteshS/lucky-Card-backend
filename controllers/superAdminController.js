@@ -3,7 +3,8 @@ import SuperAdmin from '../models/SuperAdmin.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import Admin from '../models/Admin.js';
-import Game from '../models/gameModel.js'
+import Game from '../models/gameModel.js';
+import BetPercentage from '../models/BetPercentage.js'
 
 export const login = async (req, res) => {
   try {
@@ -179,5 +180,35 @@ export const deleteAdmin = async (req, res) => {
   } catch (error) {
     console.error('Error deleting admin:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const getPercentage = async (req, res) => {
+  try {
+      let betPercentage = await BetPercentage.findOne();
+      if (!betPercentage) {
+          betPercentage = await BetPercentage.create({ percentage: 85 });
+      }
+      res.json({ percentage: betPercentage.percentage });
+  } catch (error) {
+      res.status(500).json({ message: 'Error fetching bet percentage', error: error.message });
+  }
+};
+
+export const updatePercentage = async (req, res) => {
+  try {
+      const { percentage } = req.body;
+      if (percentage < 0 || percentage > 100) {
+          return res.status(400).json({ message: 'Percentage must be between 0 and 100' });
+      }
+      let betPercentage = await BetPercentage.findOne();
+      if (!betPercentage) {
+          betPercentage = new BetPercentage();
+      }
+      betPercentage.percentage = percentage;
+      await betPercentage.save();
+      res.json({ message: 'Bet percentage updated successfully', percentage });
+  } catch (error) {
+      res.status(500).json({ message: 'Error updating bet percentage', error: error.message });
   }
 };

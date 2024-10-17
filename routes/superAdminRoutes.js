@@ -1,8 +1,9 @@
 // routes/superAdminRoutes.js
 import express from 'express';
-import {addToWallet, getAllAdmins, login, getGameHistory, blockAdmin, unblockAdmin, deleteAdmin} from '../controllers/superAdminController.js';
+import {addToWallet, getAllAdmins, login, getGameHistory, blockAdmin, unblockAdmin, deleteAdmin, updatePercentage, getPercentage} from '../controllers/superAdminController.js';
 import {authSuperAdmin} from '../middleware/auth.js';
 import { calculateAmounts, chooseAlgorithm, getCurrentAlgorithm } from '../controllers/cardController.js';
+
 
 const router = express.Router();
 
@@ -17,5 +18,8 @@ router.get('/current-algorithm', getCurrentAlgorithm);
 router.post('/block-admin', authSuperAdmin, blockAdmin);
 router.post('/unblock-admin', authSuperAdmin, unblockAdmin);
 router.post('/delete-admin', authSuperAdmin, deleteAdmin);
+
+router.get('/getPercentage', getPercentage);
+router.put('/updatePercentage', updatePercentage);
 
 export default router;
