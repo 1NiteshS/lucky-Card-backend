@@ -113,7 +113,7 @@ export const getCurrentGame = async () => {
             success: false,
             message: 'Error fetching current game',
             error: error.message
-        };
+        };
     }
 };
 
@@ -200,9 +200,6 @@ const processGameBets = (bets) => {
         console.log("No bets placed. Skipping bet processing...");
         return {}; // Returning an empty object or any default value to avoid errors
     }
-
-    console.log(bets);
-    
 
     let totalAmount = 0;
     const amounts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
@@ -387,28 +384,17 @@ const processGameBetsWithZeroRandomAndMin = async (bets) => {
         newObject[key] = value; // Store each value in the new object
     }
     
-    // Log the newObject
-    console.log("newObject", newObject);
-    
     // Return result directly without nesting
     return newObject;
 };
 
 function selectRandomAmount(validAmounts) {
-    console.log("Valid Amounts:", JSON.stringify(validAmounts));
-    console.log("Undefined", validAmounts);
-
-
     let nonZeroEntries = [];
 
     // Check the structure of validAmounts and process accordingly
     if (validAmounts.type === 'randomMultiplier') {
-        console.log("A");
-        
         // Handle the structure returned by processGameBetsWithZeroRandomAndMin
         if (validAmounts.amount !== 0) {
-            console.log("B");
-            
             nonZeroEntries.push({
                 key: validAmounts.multiplier,
                 index: parseInt(validAmounts.selectedCard.slice(-3)) - 1, // Convert A001 to 0, A002 to 1, etc.
@@ -416,32 +402,22 @@ function selectRandomAmount(validAmounts) {
             });
         }
     } else {
-        console.log("C");
-        
         // Handle the original expected structure
         for (let key in validAmounts) {
             if (Array.isArray(validAmounts[key])) {
-                console.log("D");
-                
                 validAmounts[key].forEach((value, index) => {
                     if (value !== 0) {
                         nonZeroEntries.push({ key, index, value });
                     }
                 });
             } else if (typeof validAmounts[key] === 'number' && validAmounts[key] !== 0) {
-                console.log("E");
-                
                 nonZeroEntries.push({ key, index: 0, value: validAmounts[key] });
             }
         }
     }
 
-    console.log("Non-zero entries:", nonZeroEntries);
-
     // Check if we have any non-zero entries
-    if (nonZeroEntries.length === 0) {
-        console.log("F");
-        
+    if (nonZeroEntries.length === 0) { 
         console.log("No non-zero entries found.");
         return { key: "0", index: 0, value: 0 };
     }
@@ -449,7 +425,6 @@ function selectRandomAmount(validAmounts) {
     // Pick a random entry from the non-zero values
     const randomEntry = nonZeroEntries[Math.floor(Math.random() * nonZeroEntries.length)];
 
-    console.log("Selected random entry:", randomEntry);
     return randomEntry;
 }
 
@@ -630,6 +605,10 @@ export const placeBet = async (req, res) => {
 };
 
 const calculateAdminResults = async (game, winningCard) => {
+    console.log("game", game);
+    console.log("winningCard", winningCard);
+    
+    
     const winnerMultiplier = {
         "1": 10,
         "2": 20,
@@ -675,6 +654,8 @@ const calculateAdminResults = async (game, winningCard) => {
         }
         // console.log(adminResult);
     }
+    console.log("adminResults", adminResults);
+    
     return adminResults;
 };
 
