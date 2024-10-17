@@ -131,10 +131,10 @@ export const calculateAmounts = async () => {
 
         switch (chosenAlgorithm) {
             case 'minAmount':
-                validAmounts = await processGameBetsWithMinAmount(latestGame.Bets);
+                validAmounts =  processGameBetsWithMinAmount(latestGame.Bets);
                 break;
             case 'zeroAndRandom':
-                validAmounts = await processGameBetsWithZeroRandomAndMin(latestGame.Bets);
+                validAmounts =  processGameBetsWithZeroRandomAndMin(latestGame.Bets);
                 break;
             default:
                 validAmounts = processGameBets(latestGame.Bets);
