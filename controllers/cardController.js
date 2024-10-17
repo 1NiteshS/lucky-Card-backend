@@ -122,7 +122,7 @@ export const calculateAmounts = async () => {
     try {
         const latestGame = await Game.findOne().sort({ createdAt: -1 }).lean();
         if (!latestGame) {
-            return res.status(404).json({ message: 'No games found' });
+            return { message: 'No games found' };
         }
 
         const choiceDoc = await AdminChoice.findOne();
