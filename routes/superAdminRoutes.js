@@ -3,6 +3,7 @@ import express from 'express';
 import {addToWallet, getAllAdmins, login, getGameHistory, blockAdmin, unblockAdmin, deleteAdmin, updatePercentage, getPercentage} from '../controllers/superAdminController.js';
 import {authSuperAdmin} from '../middleware/auth.js';
 import { calculateAmounts, chooseAlgorithm, getCurrentAlgorithm } from '../controllers/cardController.js';
+import { getAdminWinnings } from '../controllers/adminController.js';
 
 
 const router = express.Router();
@@ -21,5 +22,6 @@ router.post('/delete-admin', authSuperAdmin, deleteAdmin);
 
 router.get('/getPercentage', getPercentage);
 router.put('/updatePercentage', updatePercentage);
+router.get('/winnings/:adminId', getAdminWinnings);
 
 export default router;
