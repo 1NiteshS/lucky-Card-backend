@@ -3,9 +3,10 @@ import Timer from '../models/timerModel.js';
 import Game from '../models/gameModel.js';
 import Admin from '../models/Admin.js';
 import AdminGameResult from '../models/AdminGameResult.js';
-// import { calculateAndStoreAdminWinnings } from './adminController.js';
+import {calculateAndStoreAdminWinnings} from './adminController.js'
 import AdminChoice from '../models/AdminChoice.js';
 import BetPercentage from '../models/BetPercentage.js'
+import RecentWinningCard from '../models/recentWinningCard.js';
 
 
 async function getPercentageFromDatabase() {
@@ -189,10 +190,16 @@ export const calculateAmounts = async () => {
                 validAmounts = processGameBets(latestGame.Bets);
         }
 
+        console.log("validAmounts", validAmounts);
+        
+
         const WinningCard = selectRandomAmount(validAmounts);
         await saveSelectedCard(WinningCard, latestGame.GameId);
         const adminResults = await calculateAdminResults(latestGame, WinningCard);
         // await calculateAndStoreAdminWinnings(latestGame.GameId);
+
+  
+        
 
         return {
             message: 'Amounts calculated successfully',
@@ -250,7 +257,7 @@ const processGameBets = async (bets) => {
         return {}; // Returning an empty object or any default value to avoid errors
     }
 
-    console.log(bets);
+    console.log("Bets" , bets);
     
 
     let totalAmount = 0;
@@ -316,6 +323,9 @@ const processGameBets = async (bets) => {
     const percentage = await getPercentageFromDatabase();
     const percAmount = totalAmount * (percentage / 100);
 
+    console.log("percAmount" , percAmount);
+    
+
 
     for(let i = 0; i < amounts.length; i++) {
         if(amounts[i]*10 < percAmount) {
@@ -349,6 +359,9 @@ const processGameBets = async (bets) => {
             multipliedArray["10"][i] = amounts[i]*100;
         }
     }
+
+    console.log("multipliedArray" , multipliedArray);
+    
     
     return multipliedArray;
 };
@@ -669,7 +682,7 @@ const processGameBetsWithZeroRandomAndMin = async (bets) => {
 
 
 function selectRandomAmount(validAmounts) {
-    console.log("Valid Amounts:", JSON.stringify(validAmounts, null, 2));
+    console.log("Valid Amounts:", validAmounts);
 
     if (typeof validAmounts !== 'object' || validAmounts === null) {
         console.log("Valid amounts is not an object.");
@@ -703,7 +716,7 @@ function selectRandomAmount(validAmounts) {
         }
     }
 
-    console.log("Non-zero entries:", nonZeroEntries);
+    // console.log("Non-zero entries:", nonZeroEntries);
 
     // Check if we have any non-zero entries
     if (nonZeroEntries.length === 0) {
@@ -1176,3 +1189,87 @@ export const claimWinnings = async (req, res) => {
         });
     }
 };
+
+export const processAllSelectedCards = async (req, res) => {
+    try {
+        // Fetch all unique gameIds from SelectedCard collection
+        const uniqueGameIds = await SelectedCard.distinct('gameId');
+        if (uniqueGameIds.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No games found with selected cards.",
+            });
+        }
+        const processedGames = await Promise.all(uniqueGameIds.map(async (gameId) => {
+            // Fetch all selected cards for this game
+            const selectedCards = await SelectedCard.find({ gameId });
+            // Process each selected card
+            const processedCards = await Promise.all(selectedCards.map(async (card) => {
+                const newCard = new SelectedCard({
+                    gameId: card.gameId,
+                    cardId: card.cardId,
+                    multiplier: card.multiplier,
+                    amount: card.amount,
+                });
+                await newCard.save();
+                return newCard;
+            }));
+            // Update game status
+            const currentGame = await Game.findOne({ GameId: gameId });
+            if (currentGame) {
+                currentGame.status = 'completed';
+                await currentGame.save();
+            }
+            // Calculate and store admin winnings
+            await calculateAndStoreAdminWinnings(gameId);
+            // Store recent winning card
+            const winningCard = processedCards[Math.floor(Math.random() * processedCards.length)];
+            const recentWinningCard = new RecentWinningCard({
+                gameId: gameId,
+                cardId: winningCard.cardId,
+                amount: winningCard.amount,
+                multiplier: parseFloat(winningCard.multiplier), // Convert to Number if it's a String
+            });
+            await recentWinningCard.save();
+            return {
+                gameId,
+                processedCards,
+                winningCard: recentWinningCard
+            };
+        }));
+        // Keep only the latest 10 winning cards
+        await keepLatest10WinningCards();
+        // Send the response with all processed games and cards
+        res.status(200).json({
+            success: true,
+            message: "All selected cards processed and saved successfully. Only the latest 10 winning cards are kept.",
+            processedGames: processedGames,
+        });
+    } catch (error) {
+        console.error('Error in processAllSelectedCards:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error processing request',
+            error: error.message,
+        });
+    }
+};
+// Function to keep only the latest 10 winning cards
+async function keepLatest10WinningCards() {
+    try {
+        // Get total count of documents
+        const totalCount = await RecentWinningCard.countDocuments();
+        // If there are more than 10 documents, remove the oldest ones
+        if (totalCount > 10) {
+            const numberOfDocumentsToRemove = totalCount - 10;
+            const oldestDocuments = await RecentWinningCard.find()
+                .sort({ createdAt: 1 })
+                .limit(numberOfDocumentsToRemove);
+            const oldestIds = oldestDocuments.map(doc => doc._id);
+            await RecentWinningCard.deleteMany({ _id: { $in: oldestIds } });
+        }
+    } catch (error) {
+        console.error('Error in keepLatest10WinningCards:', error);
+        throw error;
+    }
+}

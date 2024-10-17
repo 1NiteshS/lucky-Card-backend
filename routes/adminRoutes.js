@@ -10,6 +10,7 @@ import {
   getAdminProfile,
   getCurrentGame,
   updatePassword,
+  getAdminWinnings,
 } from '../controllers/adminController.js';
 import {authAdmin, authSuperAdmin} from '../middleware/auth.js';
 
@@ -24,5 +25,6 @@ router.get('/all-admins', getAllAdmins);
 router.get("/profile/:adminId", authAdmin, getAdminProfile);
 router.get('/current-game', getCurrentGame);
 router.post('/update-password', updatePassword);
+router.get('/winnings/:adminId', authAdmin, getAdminWinnings);
 
 export default router;

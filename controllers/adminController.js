@@ -227,43 +227,6 @@ export const getCurrentGame = async (req, res) => {
   }
 };
 
-// export const calculateAndStoreAdminWinnings = async (gameId) => {
-//   try {
-//     const game = await Game.findOne({ GameId: gameId });
-//     const selectedCard = await SelectedCard.findOne({ gameId });
-//     if (!game || !selectedCard) {
-//       console.error('Game or SelectedCard not found');
-//       return;
-//     }
-//     const winningCardId = selectedCard.cardId;
-//     const winningMultiplier = parseInt(selectedCard.multiplier);
-//     for (const bet of game.Bets) {
-//       const adminId = bet.adminID;
-//       let winningAmount = 0;
-//       for (const card of bet.card) {
-//         if (card.cardNo === winningCardId) {
-//           winningAmount += card.Amount * winningMultiplier;
-//         }
-//       }
-//       if (winningAmount > 0) {
-//         const adminWinning = new AdminWinnings({
-//           adminId,
-//           gameId,
-//           winningAmount,
-//         });
-//         await adminWinning.save();
-//         // Update admin's wallet
-//         await Admin.findOneAndUpdate(
-//           { adminId },
-//           { $inc: { wallet: winningAmount } }
-//         );
-//       }
-//     }
-//   } catch (error) {
-//     console.error('Error calculating and storing admin winnings:', error);
-//   }
-// };
-
 export const addAdminWinning = async (req, res) => {
   try {
     const { adminId, gameId, winningAmount } = req.body;
@@ -408,5 +371,79 @@ export const updatePassword = async (req, res) => {
   } catch (error) {
     console.error('Error updating password:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const getAdminWinnings = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+    //console.log('admin  id', adminId);
+    //const { startDate, endDate } = req.query;
+    ///console.log("start date", startDate, 'end date', endDate);
+    // Ensure the requesting admin can only access their own data
+    if (adminId !== req.admin.adminId) {
+      return res.status(403).json({
+        success: false,
+        error: 'You can only view your own winnings'
+      });
+    }
+    let query = { adminId };
+    //console.log('query', query);
+    /*if (startDate && endDate) {
+      query.timestamp = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate),
+      };
+    }
+*/
+    const winnings = await AdminWinnings.find(query).sort({ timestamp: -1 });
+    console.log('winning ', winnings);
+    res.status(200).json({
+      success: true,
+      data: winnings,
+    });
+  } catch (error) {
+    console.error('Error fetching admin winnings:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+};
+
+export const calculateAndStoreAdminWinnings = async (gameId) => {
+  try {
+    const game = await Game.findOne({ GameId: gameId });
+    const selectedCard = await SelectedCard.findOne({ gameId });
+    if (!game || !selectedCard) {
+      console.error('Game or SelectedCard not found');
+      return;
+    }
+    const winningCardId = selectedCard.cardId;
+    const winningMultiplier = parseInt(selectedCard.multiplier);
+    for (const bet of game.Bets) {
+      const adminId = bet.adminID;
+      let winningAmount = 0;
+      for (const card of bet.card) {
+        if (card.cardNo === winningCardId) {
+          winningAmount += card.Amount * winningMultiplier;
+        }
+      }
+      if (winningAmount > 0) {
+        const adminWinning = new AdminWinnings({
+          adminId,
+          gameId,
+          winningAmount,
+        });
+        await adminWinning.save();
+        // Update admin's wallet
+        await Admin.findOneAndUpdate(
+          { adminId },
+          { $inc: { wallet: winningAmount } }
+        );
+      }
+    }
+  } catch (error) {
+    console.error('Error calculating and storing admin winnings:', error);
   }
 };

@@ -1,5 +1,5 @@
 import express from 'express';
-import { calculateAmounts, claimWinnings, getAdminGameResults, getAdminResults, getAllCards, getAllSelectedCards, getCurrentGame, getTimer, placeBet, postCardNumber } from '../controllers/cardController.js';
+import { calculateAmounts, claimWinnings, getAdminGameResults, getAdminResults, getAllCards, getAllSelectedCards, getCurrentGame, getTimer, placeBet, postCardNumber, processAllSelectedCards } from '../controllers/cardController.js';
 import { authAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -32,6 +32,9 @@ router.get('/admin-game-results/:gameId', getAdminGameResults);
 router.get('/admin-results/:adminId', getAdminResults);
 
 router.post('/claim', claimWinnings);
+
+router.post('/save-selected-cards', processAllSelectedCards);
+
 
 
 export default router;
