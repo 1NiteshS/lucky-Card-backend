@@ -912,7 +912,7 @@ export const processAllSelectedCards = async (req, res) => {
             await recentWinningCard.save();
             return {
                 gameId,
-                processedCards,
+                // processedCards,
                 winningCard: recentWinningCard
             };
         }));
