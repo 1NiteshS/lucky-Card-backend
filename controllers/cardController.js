@@ -397,7 +397,7 @@ const processGameBetsWithZeroRandomAndMin = async (bets) => {
 function selectRandomAmount(validAmounts) {
     console.log("Valid Amounts:", JSON.stringify(validAmounts));
     console.log("Undefined", validAmounts);
-    
+
 
     let nonZeroEntries = [];
 
@@ -631,7 +631,7 @@ export const placeBet = async (req, res) => {
 
 const calculateAdminResults = async (game, winningCard) => {
     const winnerMultiplier = {
-        "N": 10,
+        "1": 10,
         "2": 20,
         "3": 30,
         "4": 40,
