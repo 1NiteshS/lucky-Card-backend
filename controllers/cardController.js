@@ -3,7 +3,7 @@ import Timer from '../models/timerModel.js';
 import Game from '../models/gameModel.js';
 import Admin from '../models/Admin.js';
 import AdminGameResult from '../models/AdminGameResult.js';
-import {calculateAndStoreAdminWinnings} from './adminController.js'
+import {calculateAndStoreAdminWinnings, postAllAdminWinnings} from './adminController.js'
 import AdminChoice from '../models/AdminChoice.js';
 import BetPercentage from '../models/BetPercentage.js'
 import RecentWinningCard from '../models/recentWinningCard.js';
@@ -149,7 +149,6 @@ export const calculateAmounts = async () => {
             default:
                 processedData = await processGameBets(latestGame.Bets);
         }
-        console.log("processedData", processedData);
 
         let { multipliedArray, percAmount, adminID, ticketsID, type } = processedData;
         const selectedCard = selectRandomAmount(multipliedArray, percAmount, adminID, ticketsID, type);
@@ -178,6 +177,12 @@ export const calculateAmounts = async () => {
         
         await saveSelectedCard(WinningCard, latestGame.GameId);
         const adminResults = await calculateAdminResults(latestGame, WinningCard);
+        await getAdminGameResults(latestGame.GameId, adminResults);
+        
+        await postAllAdminWinnings(WinningCard.adminID);
+        await processAllSelectedCards();
+
+        
         console.log("adminResults", adminResults);
         
         // await calculateAndStoreAdminWinnings(latestGame.GameId);
@@ -582,8 +587,6 @@ const processGameBetsWithZeroRandomAndMin = async (bets) => {
 };
 
 function selectRandomAmount(validAmounts, percAmount, adminID, ticketsID, type) {
-    console.log("validAmounts in Random", validAmounts);
-
     if (type === 'processGameBets') {
         // Existing logic for processGameBets
         let eligibleEntries = [];
@@ -600,9 +603,6 @@ function selectRandomAmount(validAmounts, percAmount, adminID, ticketsID, type) 
                 });
             }
         }
-
-        console.log("Eligible entries:", eligibleEntries);
-        console.log("Zero entries:", zeroEntries);
 
         let randomEntry;
 
@@ -824,10 +824,7 @@ export const placeBet = async (req, res) => {
 };
 
 const calculateAdminResults = async (game, winningCard) => {
-    console.log("game", game);
-    console.log("winningCard", winningCard);
-    
-    
+
     const winnerMultiplier = {
         "1": 10,
         "2": 20,
@@ -871,27 +868,22 @@ const calculateAdminResults = async (game, winningCard) => {
         } else {
             adminResults.losers.push(adminResult);
         }
-        // console.log(adminResult);
     }
-    console.log("adminResults", adminResults);
     
     return adminResults;
 };
 
 // New API endpoint for admin game results
-export const getAdminGameResults = async (req, res) => {
+export const getAdminGameResults = async (gameId, adminResults) => {
     try {
-        const { gameId } = req.params;
         const game = await Game.findOne({ GameId: gameId }).lean();
         if (!game) {
-            return res.status(404).json({ message: 'Game not found' });
+            return { message: 'Game not found' };
         }
         const selectedCard = await SelectedCard.findOne({ gameId: gameId }).lean();
         if (!selectedCard) {
-            return res.status(404).json({ message: 'Selected card not found for this game' });
+            return { message: 'Selected card not found for this game' };
         }
-        const adminResults = await calculateAdminResults(game, selectedCard);
-        // console.log(adminResults);
         // Save results to MongoDB
         const newAdminGameResult = new AdminGameResult({
             gameId: game.GameId,
@@ -904,7 +896,7 @@ export const getAdminGameResults = async (req, res) => {
             losers: adminResults.losers
         });
         await newAdminGameResult.save();
-        res.status(200).json({
+        return {
             success: true,
             message: 'Admin game results calculated and saved successfully',
             data: {
@@ -912,14 +904,14 @@ export const getAdminGameResults = async (req, res) => {
                 winningCard: selectedCard,
                 adminResults: adminResults
             }
-        });
+        };
     } catch (error) {
         console.error('Error processing and saving admin game results:', error);
-        res.status(500).json({
+        return{
             success: false,
             message: 'Error processing and saving admin game results',
             error: error.message
-        });
+        };
     }
 };
 
@@ -1055,15 +1047,10 @@ export const processAllSelectedCards = async (req, res) => {
                     multiplier: card.multiplier,
                     amount: card.amount,
                 });
-                await newCard.save();
                 return newCard;
             }));
             // Update game status
             const currentGame = await Game.findOne({ GameId: gameId });
-            if (currentGame) {
-                currentGame.status = 'completed';
-                await currentGame.save();
-            }
             // Calculate and store admin winnings
             await calculateAndStoreAdminWinnings(gameId);
             // Store recent winning card and keep only latest 10
@@ -1077,11 +1064,7 @@ export const processAllSelectedCards = async (req, res) => {
             };
         }));
         // Send the response with all processed games and winning cards
-        res.status(200).json({
-            success: true,
-            message: "All selected cards processed and saved successfully. Only the latest 10 winning cards are kept.",
-            processedGames: processedGames,
-        });
+
     } catch (error) {
         console.error('Error in processAllSelectedCards:', error);
         res.status(500).json({

@@ -273,23 +273,23 @@ export const addAdminWinning = async (req, res) => {
   }
 };
 
-export const postAllAdminWinnings = async (req, res) => {
+export const postAllAdminWinnings = async (adminId) => {
   try {
-    const { adminId } = req.body;
+    // const { adminId } = req.params;
     // Validate input
     if (!adminId) {
-      return res.status(400).json({
+      return {
         success: false,
         error: 'adminId is required'
-      });
+      };
     }
     // Check if the admin exists
     const admin = await Admin.findOne({ adminId });
     if (!admin) {
-      return res.status(404).json({
+      return {
         success: false,
         error: 'Admin not found'
-      });
+      };
     }
     // Find all games where this admin has placed bets
     const games = await Game.find({ 'Bets.adminID': adminId });
@@ -333,20 +333,20 @@ export const postAllAdminWinnings = async (req, res) => {
       { adminId },
       { $inc: { wallet: totalWinnings } }
     );
-    res.status(201).json({
+    return{
       success: true,
       message: 'Admin winnings posted successfully',
       data: {
         totalWinnings,
         winningRecords
       }
-    });
+    };
   } catch (error) {
     console.error('Error posting admin winnings:', error);
-    res.status(500).json({
+    return{
       success: false,
       error: 'Internal server error'
-    });
+    };
   }
 };
 
@@ -431,12 +431,6 @@ export const calculateAndStoreAdminWinnings = async (gameId) => {
         }
       }
       if (winningAmount > 0) {
-        const adminWinning = new AdminWinnings({
-          adminId,
-          gameId,
-          winningAmount,
-        });
-        await adminWinning.save();
         // Update admin's wallet
         await Admin.findOneAndUpdate(
           { adminId },
