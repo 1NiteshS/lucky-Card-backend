@@ -5,8 +5,8 @@ import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { sendOTP } from '../utils/emailService.js';
 import Game from '../models/gameModel.js';
-import SelectedCard from '../models/selectedCardModel.js'
-import AdminWinnings from '../models/AdminWinnings.js'
+import SelectedCard from '../models/selectedCardModel.js';
+import AdminWinnings from '../models/AdminWinnings.js';
 
 const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -396,7 +396,7 @@ export const getAdminWinnings = async (req, res) => {
         $lte: new Date(endDate),
       };
     }
-*/
+  */
     const winnings = await AdminWinnings.find(query).sort({ timestamp: -1 });
     console.log('winning ', winnings);
     res.status(200).json({

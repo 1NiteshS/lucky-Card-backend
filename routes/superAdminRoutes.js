@@ -3,7 +3,7 @@ import express from 'express';
 import {addToWallet, getAllAdmins, login, getGameHistory, blockAdmin, unblockAdmin, deleteAdmin, updatePercentage, getPercentage} from '../controllers/superAdminController.js';
 import {authSuperAdmin} from '../middleware/auth.js';
 import { calculateAmounts, chooseAlgorithm, getCurrentAlgorithm } from '../controllers/cardController.js';
-import { getAdminWinnings } from '../controllers/adminController.js';
+// import { getAdminWinnings } from '../controllers/adminController.js';
 
 
 const router = express.Router();
@@ -11,7 +11,7 @@ const router = express.Router();
 router.post('/login', login);
 router.get('/all-admins', getAllAdmins);
 router.post('/add-to-wallet', authSuperAdmin, addToWallet);
-router.get('/game-history', authSuperAdmin, getGameHistory)
+router.get('/game-history', authSuperAdmin, getGameHistory);
 
 router.post('/choose-algorithm', chooseAlgorithm);
 router.get('/current-algorithm', getCurrentAlgorithm);

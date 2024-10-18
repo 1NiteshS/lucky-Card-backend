@@ -8,10 +8,19 @@ import AdminChoice from '../models/AdminChoice.js';
 import BetPercentage from '../models/BetPercentage.js'
 import RecentWinningCard from '../models/recentWinningCard.js';
 
-
 async function getPercentageFromDatabase() {
     const betPercentage = await BetPercentage.findOne();
-    return betPercentage ? betPercentage.percentage : 85; // Default to 85 if not set
+    return betPercentage ? betPercentage.percentage : 85;
+}
+
+async function processBetsWithDynamicPercentage(bets) {
+    try {
+        const betPercentage = await getPercentageFromDatabase();
+        return betPercentage;
+    } catch (error) {
+        console.error("Error processing bets:", error);
+        throw error;
+    }
 }
 
 const cardNumbers = {
@@ -121,28 +130,56 @@ export const getCurrentGame = async () => {
 export const calculateAmounts = async () => {
     try {
         const latestGame = await Game.findOne().sort({ createdAt: -1 }).lean();
+        
         if (!latestGame) {
             return { message: 'No games found' };
         }
 
         const choiceDoc = await AdminChoice.findOne();
         const chosenAlgorithm = choiceDoc ? choiceDoc.algorithm : 'default';
-        let validAmounts;
+        let processedData;
 
         switch (chosenAlgorithm) {
             case 'minAmount':
-                validAmounts = await processGameBetsWithMinAmount(latestGame.Bets);
+                processedData = await processGameBetsWithMinAmount(latestGame.Bets);
                 break;
             case 'zeroAndRandom':
-                validAmounts = await processGameBetsWithZeroRandomAndMin(latestGame.Bets);
+                processedData = await processGameBetsWithZeroRandomAndMin(latestGame.Bets);
                 break;
             default:
-                validAmounts = await processGameBets(latestGame.Bets);
+                processedData = await processGameBets(latestGame.Bets);
+        }
+        console.log("processedData", processedData);
+
+        let { multipliedArray, percAmount, adminID, ticketsID, type } = processedData;
+        const selectedCard = selectRandomAmount(multipliedArray, percAmount, adminID, ticketsID, type);
+
+        if (!selectedCard || !selectedCard.randomEntry) {
+            throw new Error('No valid card selected');
         }
 
-        const WinningCard = selectRandomAmount(validAmounts);
+        const { randomEntry } = selectedCard;
+        
+        // Convert the index to the corresponding card number
+        const cardNumbers = ["A001", "A002", "A003", "A004", "A005", "A006", "A007", "A008", "A009", "A010", "A011", "A012"];
+        const selectedCardNo = cardNumbers[randomEntry.index];
+
+        if (!selectedCardNo) {
+            throw new Error('Invalid card index');
+        }
+
+        const WinningCard = {
+            cardId: selectedCardNo,
+            multiplier: parseInt(randomEntry.key),
+            amount: randomEntry.value,
+            adminID: selectedCard.adminID,
+            ticketsID: selectedCard.ticketsID
+        };
+        
         await saveSelectedCard(WinningCard, latestGame.GameId);
         const adminResults = await calculateAdminResults(latestGame, WinningCard);
+        console.log("adminResults", adminResults);
+        
         // await calculateAndStoreAdminWinnings(latestGame.GameId);
 
         return {
@@ -194,7 +231,7 @@ export const getCurrentAlgorithm = async (req, res) => {
 };
 
 // Function to process the bets of each game
-const processGameBets = (bets) => { 
+const processGameBets = async (bets) => { 
     // Check if bets array is empty
     if (!bets || bets.length === 0) {
         console.log("No bets placed. Skipping bet processing...");
@@ -245,7 +282,7 @@ const processGameBets = (bets) => {
                     amounts[11] += card.Amount;
                 }
             });
-    }
+    }   
 
     let multipliedArray = {
         "1":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -260,217 +297,399 @@ const processGameBets = (bets) => {
         "10":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     }  
 
-    const percAmount = totalAmount * 0.85;
+    let perc = await processBetsWithDynamicPercentage()
+
+    // const percAmount = totalAmount * 0.85;
+    const percAmount = totalAmount * (perc / 100);
+
 
     for(let i = 0; i < amounts.length; i++) {
-        if(amounts[i]*10 < percAmount) {
+        if(amounts[i]*10 !== 0) {
             multipliedArray["1"][i] = amounts[i]*10;
         }
-        if(amounts[i]*20 < percAmount) {
+        if(amounts[i]*20 !== 0) {
             multipliedArray["2"][i] = amounts[i]*20;
         }
-        if(amounts[i]*30 < percAmount) {
+        if(amounts[i]*30 !== 0) {
             multipliedArray["3"][i] = amounts[i]*30;
         }
-        if(amounts[i]*40 < percAmount) {
+        if(amounts[i]*40 !== 0) {
             multipliedArray["4"][i] = amounts[i]*40;
         }
-        if(amounts[i]*50 < percAmount) {
+        if(amounts[i]*50 !== 0) {
             multipliedArray["5"][i] = amounts[i]*50;
         }
-        if(amounts[i]*60 < percAmount) {
+        if(amounts[i]*60 !== 0) {
             multipliedArray["6"][i] = amounts[i]*60;
         }
-        if(amounts[i]*70 < percAmount) {
+        if(amounts[i]*70 !== 0) {
             multipliedArray["7"][i] = amounts[i]*70;
         }
-        if(amounts[i]*80 < percAmount) {
+        if(amounts[i]*80 !== 0) {
             multipliedArray["8"][i] = amounts[i]*80;
         }
-        if(amounts[i]*60 < percAmount) {
+        if(amounts[i]*60 !== 0) {
             multipliedArray["9"][i] = amounts[i]*90;
         }
-        if(amounts[i]*100 < percAmount) {
+        if(amounts[i]*100 !== 0) {
             multipliedArray["10"][i] = amounts[i]*100;
         }
     }
-    
-    return multipliedArray;
-};
 
-const processGameBetsWithMinAmount = async (bets) => {
-    if (!bets || bets.length === 0) {
-        console.log("No bets found in database. Skipping bet processing...");
-        return {};
-    }
+    const { adminID, ticketsID } = bets[0];
+    let type = 'processGameBets';
 
-    // 2. Find card with minimum amount
-    let minAmountCard = null;
-    let totalAmount = 0;
-
-    for (const bet of bets) {
-        for (const card of bet.card) {
-            totalAmount += card.Amount;
-            if (!minAmountCard || card.Amount < minAmountCard.Amount) {
-                minAmountCard = card;
-            }
-        }
-    }
-
-    if (!minAmountCard) {
-        console.log("No valid cards found. Skipping bet processing...");
-        return {};
-    }
-
-    // 3. Calculate 85% of total amount
-    const percAmount = totalAmount * 0.85;
-    
-    // 4 & 5. Multiply min amount card and compare with 85% total
-    const multipliedArray = {
-        "1": 0, "2": 0, "3": 0, "4": 0, "5": 0,
-        "6": 0, "7": 0, "8": 0, "9": 0, "10": 0
+    return {
+        multipliedArray,
+        percAmount,
+        adminID,
+        ticketsID,
+        type
     };
-
-    for (let i = 1; i <= 10; i++) {
-        const multipliedAmount = minAmountCard.Amount * (i * 10);
-        if (multipliedAmount < percAmount) {
-            multipliedArray[i === 10 ? "10" : i.toString()] = multipliedAmount;
-        } else {
-            break; // Stop if we exceed the 85% threshold
-        }
-    }
-
-    for (let index = 0; index < multipliedArray.length; index++) {
-        console.log(multipliedArray[index]);  
-    }
-
-    return multipliedArray;
 };
 
-const processGameBetsWithZeroRandomAndMin = async (bets) => {
+// Function to process the bets of each game
+const processGameBetsWithMinAmount = async (bets) => { 
+    // Check if bets array is empty
     if (!bets || bets.length === 0) {
-        console.log("No bets found in database. Skipping bet processing...");
-        return {};
+        console.log("No bets placed. Skipping bet processing...");
+        return {}; // Returning an empty object or any default value to avoid errors
     }
 
-    // 2. Check for cards with zero amount
-    const zeroAmountCards = [];
-    for (const bet of bets) {
-        for (const card of bet.card) {
-            if (card.Amount === 0) {
-                zeroAmountCards.push(card.cardNo);
-            }
+    let totalAmount = 0;
+    const amounts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+    for(const bet of bets) {
+        // Access cards in the bet            
+            bet.card.forEach(card => {
+                if(card.cardNo == "A001") {
+                    totalAmount += card.Amount;
+                    amounts[0] += card.Amount;
+                } else if(card.cardNo == "A002") {
+                    totalAmount += card.Amount;
+                    amounts[1] += card.Amount;
+                } else if(card.cardNo == "A003") {
+                    totalAmount += card.Amount;
+                    amounts[2] += card.Amount;
+                } else if(card.cardNo == "A004") {
+                    totalAmount += card.Amount;
+                    amounts[3] += card.Amount;
+                } else if(card.cardNo == "A005") {
+                    totalAmount += card.Amount;
+                    amounts[4] += card.Amount;
+                } else if(card.cardNo == "A006") {
+                    totalAmount += card.Amount;
+                    amounts[5] += card.Amount;
+                } else if(card.cardNo == "A007") {
+                    totalAmount += card.Amount;
+                    amounts[6] += card.Amount;
+                } else if(card.cardNo == "A008") {
+                    totalAmount += card.Amount;
+                    amounts[7] += card.Amount;
+                } else if(card.cardNo == "A009") {
+                    totalAmount += card.Amount;
+                    amounts[8] += card.Amount;
+                } else if(card.cardNo == "A010") {
+                    totalAmount += card.Amount;
+                    amounts[9] += card.Amount;
+                } else if(card.cardNo == "A011") {
+                    totalAmount += card.Amount;
+                    amounts[10] += card.Amount;
+                } else if(card.cardNo == "A012") {
+                    totalAmount += card.Amount;
+                    amounts[11] += card.Amount;
+                }
+            });
+    }   
+
+    let multipliedArray = {
+        "1":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "2":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "3":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "4":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "5":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "6":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "7":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "8":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "9":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "10":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    }  
+
+    let perc = await processBetsWithDynamicPercentage()
+
+    // const percAmount = totalAmount * 0.85;
+    const percAmount = totalAmount * (perc / 100);
+
+    for(let i = 0; i < amounts.length; i++) {
+        if(amounts[i]*10 !== 0) {
+            multipliedArray["1"][i] = amounts[i]*10;
+        }
+        if(amounts[i]*20 !== 0) {
+            multipliedArray["2"][i] = amounts[i]*20;
+        }
+        if(amounts[i]*30 !== 0) {
+            multipliedArray["3"][i] = amounts[i]*30;
+        }
+        if(amounts[i]*40 !== 0) {
+            multipliedArray["4"][i] = amounts[i]*40;
+        }
+        if(amounts[i]*50 !== 0) {
+            multipliedArray["5"][i] = amounts[i]*50;
+        }
+        if(amounts[i]*60 !== 0) {
+            multipliedArray["6"][i] = amounts[i]*60;
+        }
+        if(amounts[i]*70 !== 0) {
+            multipliedArray["7"][i] = amounts[i]*70;
+        }
+        if(amounts[i]*80 !== 0) {
+            multipliedArray["8"][i] = amounts[i]*80;
+        }
+        if(amounts[i]*60 !== 0) {
+            multipliedArray["9"][i] = amounts[i]*90;
+        }
+        if(amounts[i]*100 !== 0) {
+            multipliedArray["10"][i] = amounts[i]*100;
         }
     }
 
-    // 3. If zero amount cards found, return them
-    if (zeroAmountCards.length > 0) {
-        return {
-            type: "zeroAmount",
-            cards: zeroAmountCards
-        };
-    }
+    const { adminID, ticketsID } = bets[0];
+    let type = 'processGameBetsWithMinAmount';
 
-    // 4. If no zero amount cards, proceed with random multiplier
-    const multipliers = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
-    const randomMultiplier = multipliers[Math.floor(Math.random() * multipliers.length)];
-
-    // 5. Call processGameBetsWithMinAmount
-    const minAmountResult = await processGameBetsWithMinAmount(bets);
-
-    const newObject = {};
-
-    for (const [key, value] of Object.entries(minAmountResult)) {
-        newObject[key] = value; // Store each value in the new object
-    }
-    
-    // Return result directly without nesting
-    return newObject;
+    return {
+        multipliedArray,
+        percAmount,
+        adminID,
+        ticketsID,
+        type
+    };
 };
 
-function selectRandomAmount(validAmounts) {
-    let nonZeroEntries = [];
+const processGameBetsWithZeroRandomAndMin = async (bets) => { 
+    // Check if bets array is empty
+    if (!bets || bets.length === 0) {
+        console.log("No bets placed. Skipping bet processing...");
+        return {}; // Returning an empty object or any default value to avoid errors
+    }
 
-    // Check the structure of validAmounts and process accordingly
-    if (validAmounts.type === 'randomMultiplier') {
-        // Handle the structure returned by processGameBetsWithZeroRandomAndMin
-        if (validAmounts.amount !== 0) {
-            nonZeroEntries.push({
-                key: validAmounts.multiplier,
-                index: parseInt(validAmounts.selectedCard.slice(-3)) - 1, // Convert A001 to 0, A002 to 1, etc.
-                value: validAmounts.amount
+    let totalAmount = 0;
+    const amounts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+    for(const bet of bets) {
+        // Access cards in the bet            
+            bet.card.forEach(card => {
+                if(card.cardNo == "A001") {
+                    totalAmount += card.Amount;
+                    amounts[0] += card.Amount;
+                } else if(card.cardNo == "A002") {
+                    totalAmount += card.Amount;
+                    amounts[1] += card.Amount;
+                } else if(card.cardNo == "A003") {
+                    totalAmount += card.Amount;
+                    amounts[2] += card.Amount;
+                } else if(card.cardNo == "A004") {
+                    totalAmount += card.Amount;
+                    amounts[3] += card.Amount;
+                } else if(card.cardNo == "A005") {
+                    totalAmount += card.Amount;
+                    amounts[4] += card.Amount;
+                } else if(card.cardNo == "A006") {
+                    totalAmount += card.Amount;
+                    amounts[5] += card.Amount;
+                } else if(card.cardNo == "A007") {
+                    totalAmount += card.Amount;
+                    amounts[6] += card.Amount;
+                } else if(card.cardNo == "A008") {
+                    totalAmount += card.Amount;
+                    amounts[7] += card.Amount;
+                } else if(card.cardNo == "A009") {
+                    totalAmount += card.Amount;
+                    amounts[8] += card.Amount;
+                } else if(card.cardNo == "A010") {
+                    totalAmount += card.Amount;
+                    amounts[9] += card.Amount;
+                } else if(card.cardNo == "A011") {
+                    totalAmount += card.Amount;
+                    amounts[10] += card.Amount;
+                } else if(card.cardNo == "A012") {
+                    totalAmount += card.Amount;
+                    amounts[11] += card.Amount;
+                }
             });
+    }   
+
+    let multipliedArray = {
+        "1":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "2":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "3":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "4":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "5":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "6":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "7":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "8":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "9":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "10":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    }  
+
+    let perc = await processBetsWithDynamicPercentage()
+
+    // const percAmount = totalAmount * 0.85;
+    const percAmount = totalAmount * (perc / 100);
+
+    for(let i = 0; i < amounts.length; i++) {
+        if(amounts[i]*10 !== 0) {
+            multipliedArray["1"][i] = amounts[i]*10;
         }
-    } else {
-        // Handle the original expected structure
+        if(amounts[i]*20 !== 0) {
+            multipliedArray["2"][i] = amounts[i]*20;
+        }
+        if(amounts[i]*30 !== 0) {
+            multipliedArray["3"][i] = amounts[i]*30;
+        }
+        if(amounts[i]*40 !== 0) {
+            multipliedArray["4"][i] = amounts[i]*40;
+        }
+        if(amounts[i]*50 !== 0) {
+            multipliedArray["5"][i] = amounts[i]*50;
+        }
+        if(amounts[i]*60 !== 0) {
+            multipliedArray["6"][i] = amounts[i]*60;
+        }
+        if(amounts[i]*70 !== 0) {
+            multipliedArray["7"][i] = amounts[i]*70;
+        }
+        if(amounts[i]*80 !== 0) {
+            multipliedArray["8"][i] = amounts[i]*80;
+        }
+        if(amounts[i]*60 !== 0) {
+            multipliedArray["9"][i] = amounts[i]*90;
+        }
+        if(amounts[i]*100 !== 0) {
+            multipliedArray["10"][i] = amounts[i]*100;
+        }
+    }
+
+    const { adminID, ticketsID } = bets[0];
+    let type = 'processGameBetsWithZeroRandomAndMin';
+
+    return {
+        multipliedArray,
+        percAmount,
+        adminID,
+        ticketsID,
+        type
+    };
+};
+
+function selectRandomAmount(validAmounts, percAmount, adminID, ticketsID, type) {
+    console.log("validAmounts in Random", validAmounts);
+
+    if (type === 'processGameBets') {
+        // Existing logic for processGameBets
+        let eligibleEntries = [];
+        let zeroEntries = [];
+
         for (let key in validAmounts) {
             if (Array.isArray(validAmounts[key])) {
                 validAmounts[key].forEach((value, index) => {
-                    if (value !== 0) {
-                        nonZeroEntries.push({ key, index, value });
+                    if (value !== 0 && value <= percAmount) {
+                        eligibleEntries.push({ key, index, value });
+                    } else if (value === 0) {
+                        zeroEntries.push({ key, index, value });
                     }
                 });
-            } else if (typeof validAmounts[key] === 'number' && validAmounts[key] !== 0) {
-                nonZeroEntries.push({ key, index: 0, value: validAmounts[key] });
             }
         }
+
+        console.log("Eligible entries:", eligibleEntries);
+        console.log("Zero entries:", zeroEntries);
+
+        let randomEntry;
+
+        if (eligibleEntries.length > 0) {
+            randomEntry = eligibleEntries[Math.floor(Math.random() * eligibleEntries.length)];
+        } else if (zeroEntries.length > 0) {
+            console.log("No eligible entries found within percAmount. Selecting a zero entry.");
+            randomEntry = zeroEntries[Math.floor(Math.random() * zeroEntries.length)];
+        } else {
+            console.log("No eligible entries or zero entries found. Returning null.");
+            return null;
+        }
+
+        return { randomEntry, adminID, ticketsID };
+    } else if (type === 'processGameBetsWithMinAmount') {
+        // Logic for always selecting the minimum amount
+        let minEntry = null;
+
+        for (let key in validAmounts) {
+            if (Array.isArray(validAmounts[key])) {
+                validAmounts[key].forEach((value, index) => {
+                    if (value !== 0 && (minEntry === null || value < minEntry.value)) {
+                        minEntry = { key, index, value };
+                    }
+                });
+            }
+        }
+
+        if (minEntry) {
+            console.log("Selected minimum entry:", minEntry);
+            return { randomEntry: minEntry, adminID, ticketsID };
+        } else {
+            console.log("No non-zero entries found. Returning null.");
+            return null;
+        }
+    } else if (type === 'processGameBetsWithZeroRandomAndMin') {
+        // Logic for prioritizing zero amounts, then minimum if no zero exists
+        let zeroEntries = [];
+        let minEntry = null;
+
+        for (let key in validAmounts) {
+            if (Array.isArray(validAmounts[key])) {
+                validAmounts[key].forEach((value, index) => {
+                    if (value === 0) {
+                        zeroEntries.push({ key, index, value });
+                    } else if (minEntry === null || value < minEntry.value) {
+                        minEntry = { key, index, value };
+                    }
+                });
+            }
+        }
+
+        let selectedEntry;
+
+        if (zeroEntries.length > 0) {
+            console.log("Zero entries found. Selecting a random zero entry.");
+            selectedEntry = zeroEntries[Math.floor(Math.random() * zeroEntries.length)];
+        } else if (minEntry) {
+            console.log("No zero entries found. Selecting the minimum entry.");
+            selectedEntry = minEntry;
+        } else {
+            console.log("No entries found. Returning null.");
+            return null;
+        }
+
+        return { randomEntry: selectedEntry, adminID, ticketsID };
+    } else {
+        console.log("Invalid type specified. Returning null.");
+        return null;
     }
-
-    // Check if we have any non-zero entries
-    if (nonZeroEntries.length === 0) { 
-        console.log("No non-zero entries found.");
-        return { key: "0", index: 0, value: 0 };
-    }
-
-    // Pick a random entry from the non-zero values
-    const randomEntry = nonZeroEntries[Math.floor(Math.random() * nonZeroEntries.length)];
-
-    return randomEntry;
 }
 
 // Function to save the selected card data
 const saveSelectedCard = async (selectedAmount, gameId) => {
-
     // Check if selectedAmount is empty
     if (Object.keys(selectedAmount).length === 0) {
         console.log("selected amounts is empty.");
         return {}; // Return an empty object if validAmounts is empty
     }
 
-    let cardId;
-    if(selectedAmount.index === 0) {
-        cardId = "A001";
-    } else if(selectedAmount.index === 1) {
-        cardId = "A002";
-    } else if(selectedAmount.index === 2) {
-        cardId = "A003";
-    } else if(selectedAmount.index === 3) {
-        cardId = "A004";
-    } else if(selectedAmount.index === 4) {
-        cardId = "A005";
-    } else if(selectedAmount.index === 5) {
-        cardId = "A006";
-    } else if(selectedAmount.index === 6) {
-        cardId = "A007";
-    } else if(selectedAmount.index === 7) {
-        cardId = "A008";
-    } else if(selectedAmount.index === 8) {
-        cardId = "A009";
-    } else if(selectedAmount.index === 9) {
-        cardId = "A010";
-    } else if(selectedAmount.index === 10) {
-        cardId = "A011";
-    } else if(selectedAmount.index === 11) {
-        cardId = "A012";
-    } else {
-        throw new Error('Invalid index');
-    }
-
     const selectedCardData = {
         gameId: gameId,
-        cardId,
-        multiplier: selectedAmount.key,
-        amount: selectedAmount.value,
+        cardId: selectedAmount.cardId,
+        multiplier: selectedAmount.multiplier,
+        amount: selectedAmount.amount,
+        adminID: selectedAmount.adminID,
+        ticketsID: selectedAmount.ticketsID,
     };
 
     const selectedCard = new SelectedCard(selectedCardData);
@@ -756,7 +975,7 @@ export const getAdminResults = async (req, res) => {
 
 export const claimWinnings = async (req, res) => {
     try {
-        const { adminId, gameId } = req.body;
+        const { adminId, gameId, ticketsID } = req.body;
         // Verify if the admin exists
         const admin = await Admin.findOne({ adminId });
         if (!admin) {
@@ -773,25 +992,25 @@ export const claimWinnings = async (req, res) => {
                 message: 'Game result not found'
             });
         }
-        // Check if the admin is a winner in this game
-        const winner = gameResult.winners.find(w => w.adminId === adminId);
+        // Check if the admin is a winner in this game and has the specified ticket
+        const winner = gameResult.winners.find(w => w.adminId === adminId && w.ticketsID === ticketsID);
         if (!winner) {
             return res.status(400).json({
                 success: false,
-                message: 'Admin is not a winner in this game'
+                message: 'Admin is not a winner with the specified ticket in this game'
             });
         }
-        // Check if the admin has already claimed this game
+        // Check if the admin has already claimed this ticket
         if (winner.status === 'claimed') {
             return res.status(400).json({
                 success: false,
-                message: 'You have already claimed this game'
+                message: 'You have already claimed this ticket'
             });
         }
         // Update admin's wallet
         admin.wallet += winner.winAmount;
         await admin.save();
-        // Mark the game as claimed for this admin
+        // Mark the ticket as claimed for this admin
         winner.status = 'claimed';
         await gameResult.save();
         res.status(200).json({
@@ -800,6 +1019,7 @@ export const claimWinnings = async (req, res) => {
             data: {
                 adminId: admin.adminId,
                 gameId: gameResult.gameId,
+                ticketId: winner.ticketId,
                 claimedAmount: winner.winAmount,
                 newWalletBalance: admin.wallet
             }
@@ -896,4 +1116,3 @@ async function saveLatest10WinningCards(gameId, winningCard) {
         throw error;
     }
 }
-
