@@ -150,8 +150,8 @@ export const calculateAmounts = async () => {
                 processedData = await processGameBets(latestGame.Bets);
         }
 
-        let { multipliedArray, percAmount, type } = processedData;
-        const selectedCard = selectRandomAmount(multipliedArray, percAmount, type);
+        let { multipliedArray, percAmount, adminID, ticketsID, type } = processedData;
+        const selectedCard = selectRandomAmount(multipliedArray, percAmount, adminID, ticketsID, type);
 
         if (!selectedCard || !selectedCard.randomEntry) {
             throw new Error('No valid card selected');
@@ -171,14 +171,9 @@ export const calculateAmounts = async () => {
             cardId: selectedCardNo,
             multiplier: parseInt(randomEntry.key),
             amount: randomEntry.value,
+            adminID: selectedCard.adminID,
+            ticketsID: selectedCard.ticketsID
         };
-        // const WinningCard = {
-        //     cardId: selectedCardNo,
-        //     multiplier: parseInt(randomEntry.key),
-        //     amount: randomEntry.value,
-        //     adminID: selectedCard.adminID,
-        //     ticketsID: selectedCard.ticketsID
-        // };
         
         await saveSelectedCard(WinningCard, latestGame.GameId);
         const adminResults = await calculateAdminResults(latestGame, WinningCard);
@@ -346,12 +341,19 @@ const processGameBets = async (bets) => {
         }
     }
 
-    const { adminID, ticketsID } = bets[0];
+    // let adminID = [], ticketsID = [];
+
+    // for(let i=0 ; i<bets.length; i++){
+    // }
+    const { adminID, ticketsID } = bets[i];
+
     let type = 'processGameBets';
 
     return {
         multipliedArray,
         percAmount,
+        adminID,
+        ticketsID,
         type
     };
 };
@@ -468,6 +470,8 @@ const processGameBetsWithMinAmount = async (bets) => {
         multipliedArray,
         percAmount,
         adminID,
+        ticketsID,
+        type
     };
 };
 
@@ -581,13 +585,16 @@ const processGameBetsWithZeroRandomAndMin = async (bets) => {
     return {
         multipliedArray,
         percAmount,
+        adminID,
+        ticketsID,
         type
     };
 };
 
-function selectRandomAmount(validAmounts, percAmount, type) {
+function selectRandomAmount(validAmounts, percAmount, adminID, ticketsID, type) {
     if (type === 'processGameBets') {
         // Existing logic for processGameBets
+        
         let eligibleEntries = [];
         let zeroEntries = [];
 
@@ -615,7 +622,7 @@ function selectRandomAmount(validAmounts, percAmount, type) {
             return null;
         }
 
-        return { randomEntry };
+        return { randomEntry};
     } else if (type === 'processGameBetsWithMinAmount') {
         // Logic for always selecting the minimum amount
         let minEntry = null;

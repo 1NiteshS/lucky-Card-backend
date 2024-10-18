@@ -1,6 +1,6 @@
 // routes/superAdminRoutes.js
 import express from 'express';
-import {addToWallet, getAllAdmins, login, getGameHistory, blockAdmin, unblockAdmin, deleteAdmin, updatePercentage, getPercentage} from '../controllers/superAdminController.js';
+import {addToWallet, getAllAdmins, login, getGameHistory, blockAdmin, unblockAdmin, deleteAdmin, updatePercentage, getPercentage, getAdminWinnings, setWithdrawalAmount, getWalletHistory} from '../controllers/superAdminController.js';
 import {authSuperAdmin} from '../middleware/auth.js';
 import { calculateAmounts, chooseAlgorithm, getCurrentAlgorithm } from '../controllers/cardController.js';
 // import { getAdminWinnings } from '../controllers/adminController.js';
@@ -22,6 +22,9 @@ router.post('/delete-admin', authSuperAdmin, deleteAdmin);
 
 router.get('/getPercentage', getPercentage);
 router.put('/updatePercentage', updatePercentage);
+router.get("/winnings/:adminId", authSuperAdmin, getAdminWinnings);
+router.post("/set-withdrawal", authSuperAdmin, setWithdrawalAmount);
+router.get("/wallet-history/:adminId", getWalletHistory);
 // router.get('/winnings/:adminId', getAdminWinnings);
 
 export default router;

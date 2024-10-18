@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import Admin from '../models/Admin.js';
 import Game from '../models/gameModel.js';
 import BetPercentage from '../models/BetPercentage.js'
+import AdminWinnings from '../models/AdminWinnings.js';
 
 export const login = async (req, res) => {
   try {
@@ -210,5 +211,119 @@ export const updatePercentage = async (req, res) => {
       res.json({ message: 'Bet percentage updated successfully', percentage });
   } catch (error) {
       res.status(500).json({ message: 'Error updating bet percentage', error: error.message });
+  }
+};
+
+export const getWalletHistory = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    // const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1)
+    const totalTransactions = await WalletTransaction.countDocuments({ adminId });
+    const transactions = await WalletTransaction.find({ adminId })
+      .sort({ timestamp: -1 })
+      .skip(skip)
+      // .limit(limit);
+    const totalPages = Math.ceil(totalTransactions);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+    res.status(200).json({
+      success: true,
+      data: {
+        transactions,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalTransactions,
+          // limit,
+          hasNextPage,
+          hasPrevPage
+        }
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching wallet history:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const getAdminWinnings = async (req, res) => {
+  try {
+    const adminId  = req.params;
+    console.log(adminId);
+    // Ensure the requesting admin can only access their own data
+    // Uncomment and adjust this check if necessary
+    if (adminId !== adminId) {
+      return res.status(403).json({
+        success: false,
+        error: "You can only view your own winnings",
+      });
+    }
+    // Use an object as a filter for the query
+    const winnings = await AdminWinnings.find( adminId ).sort({
+      timestamp: -1,
+    });
+    console.log("winnings ", winnings);
+    // If no winnings found, handle that case
+    // if (!winnings.length) {
+    //   return res.status(404).json({
+    //     success: false,
+    //     message: "No winnings found for this admin",
+    //   });
+    // }
+    res.status(200).json({
+      success: true,
+      data: winnings,
+    });
+  } catch (error) {
+    console.error("Error fetching admin winnings:", error);
+    res.status(500).json({
+      success: false,
+      error: "Internal server error",
+    });
+  }
+};
+
+export const setWithdrawalAmount = async (req, res) => {
+  try {
+    const { adminId, amount } = req.body;
+    if (!adminId || !amount || amount <= 0) {
+      return res.status(400).json({
+        error: "Invalid input. Please provide a valid adminId and a positive amount.",
+      });
+    }
+    const admin = await Admin.findOne({ adminId });
+    if (!admin) {
+      return res.status(404).json({ error: "Admin not found" });
+    }
+    if (admin.wallet < amount) {
+      return res.status(400).json({
+        error: "Insufficient funds in admin's wallet",
+        currentBalance: admin.wallet,
+      });
+    }
+    admin.wallet -= Number(amount);
+    await admin.save();
+    const transaction = new WalletTransaction({
+      adminId: admin.adminId,
+      amount: amount,
+      transactionType: 'withdraw',
+    });
+    await transaction.save();
+    res.status(200).json({
+      message: "Withdrawal processed successfully",
+      adminId: admin.adminId,
+      withdrawnAmount: amount,
+      newBalance: admin.wallet,
+      transaction: {
+        amount: transaction.amount,
+        transactionType: transaction.transactionType,
+        timestamp: transaction.timestamp,
+      },
+    });
+  } catch (error) {
+    console.error("Error processing withdrawal:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };

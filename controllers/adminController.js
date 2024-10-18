@@ -309,7 +309,6 @@ export const postAllAdminWinnings = async (adminId) => {
       const adminBet = game.Bets.find(bet => bet.adminID === adminId);
       //console.log('admin bet', adminBet);
       if (adminBet) {
-        console.log(adminBet);
         for (const card of adminBet.card) {
           if (card.cardNo === winningCardId) {
             gameWinningAmount += card.Amount * winningMultiplier;
@@ -375,43 +374,6 @@ export const updatePassword = async (req, res) => {
   }
 };
 
-export const getAdminWinnings = async (req, res) => {
-  try {
-    const { adminId } = req.params;
-    //console.log('admin  id', adminId);
-    //const { startDate, endDate } = req.query;
-    ///console.log("start date", startDate, 'end date', endDate);
-    // Ensure the requesting admin can only access their own data
-    if (adminId !== req.admin.adminId) {
-      return res.status(403).json({
-        success: false,
-        error: 'You can only view your own winnings'
-      });
-    }
-    let query = { adminId };
-    //console.log('query', query);
-    /*if (startDate && endDate) {
-      query.timestamp = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate),
-      };
-    }
-  */
-    const winnings = await AdminWinnings.find(query).sort({ timestamp: -1 });
-    console.log('winning ', winnings);
-    res.status(200).json({
-      success: true,
-      data: winnings,
-    });
-  } catch (error) {
-    console.error('Error fetching admin winnings:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error'
-    });
-  }
-};
-
 export const calculateAndStoreAdminWinnings = async (gameId) => {
   try {
     const game = await Game.findOne({ GameId: gameId });
@@ -431,6 +393,12 @@ export const calculateAndStoreAdminWinnings = async (gameId) => {
         }
       }
       if (winningAmount > 0) {
+        const adminWinning = new AdminWinnings({
+          adminId,
+          gameId,
+          winningAmount,
+        });
+        await adminWinning.save();
         // Update admin's wallet
         await Admin.findOneAndUpdate(
           { adminId },
